@@ -5,46 +5,29 @@
 
 ---
 
-## Tổng quan Timeline
-
-| Giai đoạn | Mô tả | Thời gian ước tính |
-|-----------|-------|-------------------|
-| GĐ 1 | Foundation (Setup & Database) | 1-2 ngày |
-| GĐ 2 | Authentication & Layout | 2-3 ngày |
-| GĐ 3 | Project Management | 2-3 ngày |
-| GĐ 4A | Task CRUD & List View | 2-3 ngày |
-| GĐ 4B | Kanban Board (Drag & Drop) | 3-4 ngày |
-| GĐ 4C | Task Detail Sheet | 2-3 ngày |
-| GĐ 5 | Interaction & Utilities | 3-4 ngày |
-| GĐ 6 | Admin & Reporting | 2-3 ngày |
-| GĐ 7 | Review & Deploy | 1-2 ngày |
-| **Tổng** | | **18-27 ngày** |
-
----
-
-## Cross-cutting Concerns (Áp dụng xuyên suốt)
+## Các quy tắc xuyên suốt dự án (Cross-cutting Concerns)
 
 > [!IMPORTANT]
 > Các pattern dưới đây cần được áp dụng ngay từ đầu và duy trì trong suốt dự án.
 
-- [ ] **Error Handling:**
+- [ ] **Xử lý lỗi (Error Handling):**
   - Global Error Boundary (`src/app/error.tsx`)
-  - Not Found page (`src/app/not-found.tsx`)
-  - API error handling pattern với try-catch
+  - Trang Not Found (`src/app/not-found.tsx`)
+  - Xử lý lỗi API với try-catch
   
-- [ ] **Loading States:**
+- [ ] **Trạng thái Loading:**
   - Global loading (`src/app/loading.tsx`)
-  - Skeleton components cho mỗi data-fetching page
-  - Button loading states khi submit form
+  - Skeleton components cho mỗi trang có data-fetching
+  - Trạng thái loading cho button khi submit form
 
-- [ ] **Form Patterns:**
-  - Validation error display (inline + toast)
-  - Disabled state khi đang submit
-  - Success feedback với Sonner toast
+- [ ] **Quy tắc Form:**
+  - Hiển thị lỗi validation (inline + toast)
+  - Trạng thái disabled khi đang submit
+  - Thông báo thành công với Sonner toast
 
-- [ ] **Type Safety:**
+- [ ] **An toàn kiểu dữ liệu (Type Safety):**
   - Tận dụng `Prisma.ProjectGetPayload` / `Prisma.TaskCreateInput`
-  - Không define lại type thủ công
+  - Không định nghĩa lại type thủ công
 
 ---
 
@@ -60,7 +43,7 @@
 
 ---
 
-### 1.1. Setup Next.js & Dependencies
+### 1.1. Cài đặt Next.js & Dependencies
 
 - [x] **Khởi tạo dự án:**
   ```bash
@@ -83,7 +66,7 @@
 
 ---
 
-### 1.2. Cấu trúc thư mục
+### 1.2. Cấu trúc thư mục dự án
 
 ```
 nova-work-hub/
