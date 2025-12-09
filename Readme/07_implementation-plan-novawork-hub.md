@@ -599,13 +599,13 @@ main()
 
 **Mục tiêu:** CRUD Dự án, hiển thị danh sách và layout chi tiết dự án.
 
-### 3.1. Server Side (Logic)
+### 3.1. Phía Server (Logic)
 
   - [ ] **Schema Validation:** Định nghĩa `CreateProjectSchema` trong `src/lib/zod-schemas.ts`.
   - [ ] **Service:** Tạo `src/server/services/project.service.ts` (Hàm `getProjects`, `getProjectById`).
   - [ ] **Server Action:** Tạo `src/actions/project.ts` (Hàm `createProject`, `updateProjectStatus`).
 
-### 3.2. Client Side (UI)
+### 3.2. Phía Client (Giao diện)
 
   - [ ] **Project List:** Tạo `src/app/(dashboard)/projects/page.tsx`. Sử dụng component `DataTable` của Shadcn hoặc Grid Card.
   - [ ] **Create Project Modal:** Tạo form dùng `react-hook-form` + `zod` để gọi Server Action tạo dự án.
@@ -620,7 +620,7 @@ main()
 
 -----
 
-## Giai đoạn 4A: Task CRUD & List View
+## Giai đoạn 4A: Quản lý Task & Dạng danh sách
 
 **Mục tiêu:** Quản lý Task cơ bản với List View (nhanh hoàn thành, có thể demo sớm).
 
@@ -630,7 +630,7 @@ main()
   - [ ] **Service:** `src/server/services/task.service.ts` (Get tasks by project, get detail).
   - [ ] **Action:** `src/actions/task.ts` (Create, Update, Delete).
 
-### 4A.2. Task List View
+### 4A.2. Giao diện danh sách Task
 
   - [ ] **Task Page:** `src/app/(dashboard)/projects/[projectId]/tasks/page.tsx`.
   - [ ] **List Component:** `src/components/features/tasks/task-list.tsx`.
@@ -645,7 +645,7 @@ main()
 
 -----
 
-## Giai đoạn 4B: Kanban Board (Drag & Drop)
+## Giai đoạn 4B: Bảng Kanban (Kéo thả)
 
 **Mục tiêu:** Giao diện Kanban với khả năng kéo thả mượt mà.
 
@@ -662,7 +662,7 @@ main()
   - [ ] **Column Component:** `src/components/features/tasks/kanban-column.tsx`.
   - [ ] **Task Card:** `src/components/features/tasks/task-card.tsx`.
 
-### 4B.2. Drag & Drop Logic
+### 4B.2. Logic kéo thả
 
   - [ ] **Reorder Action:** Thêm `reorderTasks` vào `src/actions/task.ts`.
   - [ ] **Optimistic UI:** Cập nhật state ngay lập tức trước khi API trả về để kéo thả mượt mà.
@@ -675,7 +675,7 @@ main()
 
 -----
 
-## Giai đoạn 4C: Task Detail Sheet
+## Giai đoạn 4C: Chi tiết Task (Sheet)
 
 **Mục tiêu:** Xem và chỉnh sửa chi tiết task trong Slide-over Sheet.
 
@@ -685,7 +685,7 @@ main()
 > npm install @tiptap/react @tiptap/starter-kit
 > ```
 
-### 4C.1. Detail Components
+### 4C.1. Các component chi tiết
 
   - [ ] **Sheet Component:** `src/components/features/tasks/task-detail-sheet.tsx`.
   - [ ] **Description Editor:** Tích hợp `Tiptap` editor để sửa Description.
@@ -703,22 +703,22 @@ main()
 
 -----
 
-## Giai đoạn 5: Tương tác & Tiện ích (Interaction & Utilities)
+## Giai đoạn 5: Tương tác & Tiện ích
 
 **Mục tiêu:** Tăng tính cộng tác (Comment, File, Log time).
 
-### 5.1. Comments & Activity
+### 5.1. Bình luận & Hoạt động
 
   - [ ] **Database:** Kiểm tra lại model `Comment` và `AuditLog`.
   - [ ] **UI:** Tạo component `TaskCommentSection`.
   - [ ] **Action:** `addComment` (hỗ trợ text thuần trước, mention tính sau).
 
-### 5.2. File Attachment (Upload)
+### 5.2. Đính kèm file (Upload)
 
   - [ ] **API Route:** `src/app/api/upload/route.ts` xử lý upload lên Supabase Storage/S3.
   - [ ] **Component:** Tạo `FileUpload` dropzone. Tích hợp vào Form tạo Task và Comment.
 
-### 5.3. Time Tracking
+### 5.3. Chấm công (Log giờ)
 
   - [ ] **Modal Log Time:** Tạo Dialog cho phép nhập số giờ và ghi chú.
   - [ ] **Logic:** Server Action update bảng `TimeLog` và tính lại `totalHours` của Task (nếu cần hiển thị).
@@ -730,7 +730,7 @@ main()
 
 -----
 
-## Giai đoạn 6: Admin & Báo cáo (Admin & Reporting)
+## Giai đoạn 6: Quản trị & Báo cáo
 
 **Mục tiêu:** Quản trị hệ thống và xem dashboard tổng quan.
 
@@ -740,13 +740,13 @@ main()
 > npm install recharts
 > ```
 
-### 6.1. User Management
+### 6.1. Quản lý người dùng
 
   - [ ] **Page:** `src/app/(dashboard)/admin/users/page.tsx`.
   - [ ] **Chức năng:** List user, Tạo user mới (cấp password mặc định), Set Role/Department.
   - [ ] **Security:** Đảm bảo Server Action check `session.user.role === 'ADMIN'`.
 
-### 6.2. Dashboard Charts
+### 6.2. Biểu đồ Dashboard
 
   - [ ] **Service:** `src/server/services/report.service.ts` (Query count task by status, workload by user).
   - [ ] **UI:** Vẽ biểu đồ tròn (Task Status) và biểu đồ cột (Workload) tại trang chủ `src/app/(dashboard)/page.tsx`.
@@ -758,11 +758,11 @@ main()
 
 -----
 
-## Giai đoạn 7: Testing, Review & Deploy
+## Giai đoạn 7: Kiểm thử, Review & Triển khai
 
 **Mục tiêu:** Đảm bảo chất lượng code và đưa sản phẩm lên Production.
 
-### 7.1. Testing (Có thể chạy song song từ GĐ 3)
+### 7.1. Kiểm thử (Có thể chạy song song từ GĐ 3)
 
   - [ ] **Setup Vitest:**
     ```bash
@@ -776,14 +776,14 @@ main()
     ```
   - [ ] **E2E Tests:** Login flow, Create Project, Create Task, Kanban DnD.
 
-### 7.2. Review & Optimize
+### 7.2. Rà soát & Tối ưu
 
   - [ ] **Lint:** Chạy `npm run lint` để fix lỗi cú pháp.
   - [ ] **Type Check:** Chạy `tsc --noEmit` để đảm bảo không lỗi Type.
   - [ ] **Build Test:** Chạy `npm run build` ở local xem có lỗi build không.
   - [ ] **Performance:** Kiểm tra bundle size, lazy load components nếu cần.
 
-### 7.3. Deploy Vercel
+### 7.3. Triển khai lên Vercel
 
   - [ ] **Push Github:** Commit code lên repo.
   - [ ] **Vercel Project:** Import repo.
@@ -798,7 +798,7 @@ main()
 
 -----
 
-## Mẹo thực hiện (Pro Tips)
+## Mẹo thực hiện
 
 1.  **Server Actions trước, UI sau:** Luôn viết hàm trong `src/actions/...` và test bằng console log hoặc script nhỏ trước khi gắn vào UI. Điều này giúp tách biệt logic và giao diện.
 
