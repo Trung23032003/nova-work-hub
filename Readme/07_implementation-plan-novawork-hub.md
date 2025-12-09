@@ -569,28 +569,789 @@ main()
 
 **Mục tiêu:** User đăng nhập được, nhìn thấy Sidebar và Header đúng role.
 
-### 2.1. Authentication (Backend)
+> [!IMPORTANT]
+> **Lưu ý tương thích Prisma 7:**
+> - Auth.js v5 sử dụng `@auth/prisma-adapter` (KHÔNG phải `@next-auth/prisma-adapter` cũ)
+> - Prisma 7 yêu cầu Driver Adapter → PrismaAdapter cần nhận instance PrismaClient đã có adapter
+> - Sử dụng lại Prisma Client singleton từ `src/server/db.ts` đã tạo ở GĐ 1
 
-  - [ ] **Config Auth:** Tạo `src/lib/auth.ts` cấu hình CredentialsProvider và GoogleProvider. Adapter dùng PrismaAdapter.
-  - [ ] **API Route:** Tạo `src/app/api/auth/[...nextauth]/route.ts`.
-  - [ ] **Middleware:** Tạo `middleware.ts` để chặn các route `/dashboard` nếu chưa login.
+---
 
-### 2.2. Global Providers
+### 2.1. Cài đặt Dependencies cho Authentication
 
-  - [ ] **Providers Wrapper:** Tạo `src/providers/app-provider.tsx` bọc `SessionProvider`, `QueryProvider`, `ThemeProvider`, `Toaster`.
-  - [ ] **Root Layout:** Import `AppProvider` vào `src/app/layout.tsx`.
+```bash
+# Auth.js Prisma Adapter (tương thích Auth.js v5)
+npm install @auth/prisma-adapter
 
-### 2.3. Dashboard Layout (Frontend)
+# Theme switching (optional, but recommended)
+npm install next-themes
+```
 
-  - [ ] **Menu Config:** Tạo `src/constants/menus.ts` định nghĩa mảng menu cho Sidebar.
-  - [ ] **Component Sidebar:** Code `src/components/layout/main-sidebar.tsx`.
-  - [ ] **Component Header:** Code `src/components/layout/header.tsx` (Chứa UserNav, ThemeToggle).
-  - [ ] **Layout File:** Code `src/app/(dashboard)/layout.tsx` ghép Sidebar và Header vào.
+---
+
+### 2.2. Cấu hình Auth.js v5 (Backend)
+
+#### Bước 1: Tạo file cấu hình Auth
+
+**File `src/lib/auth.ts`:**
+```typescript
+import NextAuth from "next-auth";
+import Credentials from "next-auth/providers/credentials";
+import Google from "next-auth/providers/google";
+import { PrismaAdapter } from "@auth/prisma-adapter";
+import bcrypt from "bcryptjs";
+import { prisma } from "@/server/db"; // Sử dụng Prisma Client singleton từ GĐ 1
+
+export const { handlers, auth, signIn, signOut } = NextAuth({
+    adapter: PrismaAdapter(prisma), // Prisma 7 compatible
+    session: { strategy: "jwt" },
+    pages: {
+        signIn: "/login",
+        error: "/login",
+    },
+    providers: [
+        Google({
+            clientId: process.env.GOOGLE_CLIENT_ID!,
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+        }),
+        Credentials({
+            name: "Credentials",
+            credentials: {
+                email: { label: "Email", type: "email" },
+                password: { label: "Password", type: "password" },
+            },
+            async authorize(credentials) {
+                if (!credentials?.email || !credentials?.password) {
+                    return null;
+                }
+
+                const user = await prisma.user.findUnique({
+                    where: { email: credentials.email as string },
+                });
+
+                if (!user || !user.password) {
+                    return null;
+                }
+
+                const isValid = await bcrypt.compare(
+                    credentials.password as string,
+                    user.password
+                );
+
+                if (!isValid) {
+                    return null;
+                }
+
+                return {
+                    id: user.id,
+                    email: user.email,
+                    name: user.name,
+                    role: user.role,
+                };
+            },
+        }),
+    ],
+    callbacks: {
+        async jwt({ token, user }) {
+            if (user) {
+                token.id = user.id;
+                token.role = (user as { role?: string }).role;
+            }
+            return token;
+        },
+        async session({ session, token }) {
+            if (token && session.user) {
+                session.user.id = token.id as string;
+                session.user.role = token.role as string;
+            }
+            return session;
+        },
+    },
+});
+```
+
+> [!NOTE]
+> **Giải thích cấu hình:**
+> - `PrismaAdapter(prisma)`: Nhận Prisma Client từ `src/server/db.ts` đã được khởi tạo với Driver Adapter
+> - `session: { strategy: "jwt" }`: Dùng JWT thay vì database sessions (nhanh hơn)
+> - `callbacks`: Thêm `id` và `role` vào session để kiểm tra quyền
+
+---
+
+#### Bước 2: Tạo API Route
+
+**File `src/app/api/auth/[...nextauth]/route.ts`:**
+```typescript
+import { handlers } from "@/lib/auth";
+
+export const { GET, POST } = handlers;
+```
+
+---
+
+#### Bước 3: Mở rộng TypeScript types
+
+**File `src/types/next-auth.d.ts`:**
+```typescript
+import "next-auth";
+
+declare module "next-auth" {
+    interface User {
+        id: string;
+        role?: string;
+    }
+
+    interface Session {
+        user: {
+            id: string;
+            email: string;
+            name?: string | null;
+            role?: string;
+        };
+    }
+}
+
+declare module "next-auth/jwt" {
+    interface JWT {
+        id?: string;
+        role?: string;
+    }
+}
+```
+
+---
+
+#### Bước 4: Tạo Middleware bảo vệ route
+
+**File `middleware.ts` (root folder):**
+```typescript
+import { auth } from "@/lib/auth";
+import { NextResponse } from "next/server";
+
+export default auth((req) => {
+    const { nextUrl } = req;
+    const isLoggedIn = !!req.auth;
+
+    // Những route cần login
+    const protectedRoutes = ["/dashboard", "/projects", "/admin"];
+    const isProtectedRoute = protectedRoutes.some((route) =>
+        nextUrl.pathname.startsWith(route)
+    );
+
+    // Redirect về login nếu chưa đăng nhập
+    if (isProtectedRoute && !isLoggedIn) {
+        return NextResponse.redirect(new URL("/login", nextUrl));
+    }
+
+    // Redirect về dashboard nếu đã login mà vào trang login
+    if (isLoggedIn && nextUrl.pathname === "/login") {
+        return NextResponse.redirect(new URL("/dashboard", nextUrl));
+    }
+
+    return NextResponse.next();
+});
+
+export const config = {
+    matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+};
+```
+
+---
+
+#### Bước 5: Cập nhật `.env`
+
+Thêm các biến môi trường cho Google OAuth:
+```env
+# ===========================================
+# AUTHENTICATION (Auth.js v5)
+# ===========================================
+AUTH_SECRET="your-random-secret-key-32-chars-min"
+AUTH_URL="http://localhost:3000"
+
+# Google OAuth (optional - bỏ qua nếu chỉ dùng Credentials)
+GOOGLE_CLIENT_ID="your-google-client-id"
+GOOGLE_CLIENT_SECRET="your-google-client-secret"
+```
+
+> 💡 **Tạo Google OAuth credentials:**
+> 1. Vào https://console.cloud.google.com/apis/credentials
+> 2. Tạo OAuth 2.0 Client IDs
+> 3. Thêm Authorized redirect URI: `http://localhost:3000/api/auth/callback/google`
+
+---
+
+### 2.3. Global Providers
+
+#### Bước 1: Tạo Providers Wrapper
+
+**File `src/providers/app-provider.tsx`:**
+```tsx
+"use client";
+
+import { SessionProvider } from "next-auth/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ThemeProvider } from "next-themes";
+import { Toaster } from "sonner";
+import { useState } from "react";
+
+export function AppProvider({ children }: { children: React.ReactNode }) {
+    const [queryClient] = useState(
+        () =>
+            new QueryClient({
+                defaultOptions: {
+                    queries: {
+                        staleTime: 60 * 1000, // 1 minute
+                    },
+                },
+            })
+    );
+
+    return (
+        <SessionProvider>
+            <QueryClientProvider client={queryClient}>
+                <ThemeProvider
+                    attribute="class"
+                    defaultTheme="system"
+                    enableSystem
+                    disableTransitionOnChange
+                >
+                    {children}
+                    <Toaster richColors position="bottom-right" />
+                </ThemeProvider>
+            </QueryClientProvider>
+        </SessionProvider>
+    );
+}
+```
+
+---
+
+#### Bước 2: Cập nhật Root Layout
+
+**File `src/app/layout.tsx`:**
+```tsx
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
+import { AppProvider } from "@/providers/app-provider";
+
+const inter = Inter({ subsets: ["latin"] });
+
+export const metadata: Metadata = {
+    title: "NovaWork Hub",
+    description: "Quản lý công việc hiệu quả",
+};
+
+export default function RootLayout({
+    children,
+}: {
+    children: React.ReactNode;
+}) {
+    return (
+        <html lang="vi" suppressHydrationWarning>
+            <body className={inter.className}>
+                <AppProvider>{children}</AppProvider>
+            </body>
+        </html>
+    );
+}
+```
+
+---
+
+### 2.4. Trang Login
+
+**File `src/app/login/page.tsx`:**
+```tsx
+"use client";
+
+import { useState } from "react";
+import { signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { toast } from "sonner";
+
+export default function LoginPage() {
+    const router = useRouter();
+    const [loading, setLoading] = useState(false);
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+
+        const result = await signIn("credentials", {
+            email,
+            password,
+            redirect: false,
+        });
+
+        if (result?.error) {
+            toast.error("Email hoặc mật khẩu không đúng!");
+        } else {
+            toast.success("Đăng nhập thành công!");
+            router.push("/dashboard");
+        }
+
+        setLoading(false);
+    };
+
+    return (
+        <div className="min-h-screen flex items-center justify-center bg-background">
+            <Card className="w-full max-w-md">
+                <CardHeader>
+                    <CardTitle className="text-center">NovaWork Hub</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        <Input
+                            type="email"
+                            placeholder="Email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            required
+                        />
+                        <Input
+                            type="password"
+                            placeholder="Mật khẩu"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required
+                        />
+                        <Button type="submit" className="w-full" disabled={loading}>
+                            {loading ? "Đang đăng nhập..." : "Đăng nhập"}
+                        </Button>
+                    </form>
+
+                    <div className="relative">
+                        <div className="absolute inset-0 flex items-center">
+                            <span className="w-full border-t" />
+                        </div>
+                        <div className="relative flex justify-center text-xs uppercase">
+                            <span className="bg-background px-2 text-muted-foreground">
+                                Hoặc
+                            </span>
+                        </div>
+                    </div>
+
+                    <Button
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
+                    >
+                        Đăng nhập với Google
+                    </Button>
+                </CardContent>
+            </Card>
+        </div>
+    );
+}
+```
+
+---
+
+### 2.5. Dashboard Layout (Frontend)
+
+#### Bước 1: Tạo Menu Config
+
+**File `src/constants/menus.ts`:**
+```typescript
+import {
+    Home,
+    FolderKanban,
+    CheckSquare,
+    Users,
+    Settings,
+    Shield,
+    type LucideIcon,
+} from "lucide-react";
+
+export interface MenuItem {
+    title: string;
+    href: string;
+    icon: LucideIcon;
+    adminOnly?: boolean;
+}
+
+export const mainMenuItems: MenuItem[] = [
+    { title: "Dashboard", href: "/dashboard", icon: Home },
+    { title: "Dự án", href: "/projects", icon: FolderKanban },
+    { title: "Công việc", href: "/tasks", icon: CheckSquare },
+    { title: "Nhân sự", href: "/users", icon: Users },
+];
+
+export const adminMenuItems: MenuItem[] = [
+    { title: "Quản trị", href: "/admin", icon: Shield, adminOnly: true },
+    { title: "Cài đặt", href: "/settings", icon: Settings },
+];
+```
+
+---
+
+#### Bước 2: Tạo Sidebar Component
+
+**File `src/components/layout/main-sidebar.tsx`:**
+```tsx
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { cn } from "@/lib/utils";
+import { mainMenuItems, adminMenuItems } from "@/constants/menus";
+import { ScrollArea } from "@/components/ui/scroll-area";
+
+export function MainSidebar() {
+    const pathname = usePathname();
+    const { data: session } = useSession();
+    const isAdmin = session?.user?.role === "ADMIN";
+
+    const allMenuItems = isAdmin
+        ? [...mainMenuItems, ...adminMenuItems]
+        : [...mainMenuItems, ...adminMenuItems.filter((item) => !item.adminOnly)];
+
+    return (
+        <aside className="w-64 border-r bg-card h-screen sticky top-0">
+            <div className="p-4 border-b">
+                <h1 className="text-xl font-bold">NovaWork Hub</h1>
+            </div>
+            <ScrollArea className="h-[calc(100vh-65px)]">
+                <nav className="p-4 space-y-1">
+                    {allMenuItems.map((item) => {
+                        const isActive = pathname === item.href;
+                        return (
+                            <Link
+                                key={item.href}
+                                href={item.href}
+                                className={cn(
+                                    "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
+                                    isActive
+                                        ? "bg-primary text-primary-foreground"
+                                        : "hover:bg-muted"
+                                )}
+                            >
+                                <item.icon className="h-4 w-4" />
+                                {item.title}
+                            </Link>
+                        );
+                    })}
+                </nav>
+            </ScrollArea>
+        </aside>
+    );
+}
+```
+
+---
+
+#### Bước 3: Tạo Header Component
+
+**File `src/components/layout/header.tsx`:**
+```tsx
+"use client";
+
+import { useSession, signOut } from "next-auth/react";
+import { useTheme } from "next-themes";
+import { Moon, Sun, LogOut, User } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+export function Header() {
+    const { data: session } = useSession();
+    const { setTheme, theme } = useTheme();
+
+    return (
+        <header className="h-16 border-b bg-card sticky top-0 z-10">
+            <div className="flex items-center justify-between h-full px-6">
+                <div>{/* Breadcrumb hoặc title sẽ thêm sau */}</div>
+
+                <div className="flex items-center gap-4">
+                    {/* Theme Toggle */}
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                    >
+                        <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                        <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                    </Button>
+
+                    {/* User Menu */}
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="gap-2">
+                                <Avatar className="h-8 w-8">
+                                    <AvatarFallback>
+                                        {session?.user?.name?.charAt(0) || "U"}
+                                    </AvatarFallback>
+                                </Avatar>
+                                <span className="hidden md:inline">
+                                    {session?.user?.name || "User"}
+                                </span>
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem>
+                                <User className="mr-2 h-4 w-4" />
+                                Hồ sơ
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => signOut()}>
+                                <LogOut className="mr-2 h-4 w-4" />
+                                Đăng xuất
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
+            </div>
+        </header>
+    );
+}
+```
+
+---
+
+#### Bước 4: Tạo Dashboard Layout
+
+**File `src/app/(dashboard)/layout.tsx`:**
+```tsx
+import { MainSidebar } from "@/components/layout/main-sidebar";
+import { Header } from "@/components/layout/header";
+
+export default function DashboardLayout({
+    children,
+}: {
+    children: React.ReactNode;
+}) {
+    return (
+        <div className="flex min-h-screen">
+            <MainSidebar />
+            <div className="flex-1 flex flex-col">
+                <Header />
+                <main className="flex-1 p-6">{children}</main>
+            </div>
+        </div>
+    );
+}
+```
+
+---
+
+#### Bước 5: Tạo trang Dashboard
+
+**File `src/app/(dashboard)/page.tsx`:**
+```tsx
+import { auth } from "@/lib/auth";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+export default async function DashboardPage() {
+    const session = await auth();
+
+    return (
+        <div className="space-y-6">
+            <h1 className="text-3xl font-bold">
+                Xin chào, {session?.user?.name || "User"}! 👋
+            </h1>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Card>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium text-muted-foreground">
+                            Dự án đang hoạt động
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-2xl font-bold">--</p>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium text-muted-foreground">
+                            Công việc của tôi
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-2xl font-bold">--</p>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium text-muted-foreground">
+                            Hoàn thành hôm nay
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-2xl font-bold">--</p>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium text-muted-foreground">
+                            Quá hạn
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-2xl font-bold text-destructive">--</p>
+                    </CardContent>
+                </Card>
+            </div>
+        </div>
+    );
+}
+```
+
+---
+
+### 2.6. Checklist thực hiện
+
+  - [ ] **Cài dependencies:** `@auth/prisma-adapter`, `next-themes`
+  - [ ] **Config Auth:** Tạo `src/lib/auth.ts` với CredentialsProvider và GoogleProvider
+  - [ ] **API Route:** Tạo `src/app/api/auth/[...nextauth]/route.ts`
+  - [ ] **Type definitions:** Tạo `src/types/next-auth.d.ts` mở rộng types
+  - [ ] **Middleware:** Tạo `middleware.ts` để bảo vệ routes
+  - [ ] **Providers Wrapper:** Tạo `src/providers/app-provider.tsx`
+  - [ ] **Root Layout:** Cập nhật `src/app/layout.tsx` với AppProvider
+  - [ ] **Login Page:** Tạo `src/app/login/page.tsx`
+  - [ ] **Menu Config:** Tạo `src/constants/menus.ts`
+  - [ ] **Sidebar:** Tạo `src/components/layout/main-sidebar.tsx`
+  - [ ] **Header:** Tạo `src/components/layout/header.tsx`
+  - [ ] **Dashboard Layout:** Tạo `src/app/(dashboard)/layout.tsx`
+  - [ ] **Dashboard Page:** Tạo `src/app/(dashboard)/page.tsx`
+
+---
 
 ### ✅ Checkpoint GĐ 2
-- [ ] Login/Logout hoạt động (cả Credentials và Google)
-- [ ] Truy cập `/dashboard` khi chưa login → redirect về login
-- [ ] Sidebar hiển thị đúng menu theo role (Admin thấy thêm mục Admin)
+
+| Task | Status |
+|------|--------|
+| `@auth/prisma-adapter` cài đặt | ⬜ |
+| Auth config with Prisma 7 Driver Adapter | ⬜ |
+| Login/Logout hoạt động (Credentials) | ⬜ |
+| Google OAuth hoạt động (optional) | ⬜ |
+| Middleware bảo vệ `/dashboard` | ⬜ |
+| Sidebar hiển thị đúng menu theo role | ⬜ |
+| Theme toggle (dark/light) | ⬜ |
+| `npm run build` passed | ⬜ |
+
+---
+
+### 🚨 Xử lý lỗi thường gặp GĐ 2
+
+#### ❌ Lỗi 1: `Module not found: @auth/prisma-adapter`
+
+**Nguyên nhân:** Chưa cài package.
+
+**Cách fix:**
+```bash
+npm install @auth/prisma-adapter
+```
+
+---
+
+#### ❌ Lỗi 2: `PrismaAdapter is not compatible with Prisma 7`
+
+**Nguyên nhân:** Sử dụng `@next-auth/prisma-adapter` cũ thay vì `@auth/prisma-adapter`.
+
+**Cách fix:**
+1. Gỡ package cũ (nếu có):
+   ```bash
+   npm uninstall @next-auth/prisma-adapter
+   ```
+2. Cài package mới:
+   ```bash
+   npm install @auth/prisma-adapter
+   ```
+
+---
+
+#### ❌ Lỗi 3: `AUTH_SECRET is missing`
+
+**Triệu chứng:**
+```
+[auth][error] MissingSecret: Please define a `secret`.
+```
+
+**Cách fix:** Thêm `AUTH_SECRET` vào `.env`:
+```env
+AUTH_SECRET="your-32-character-random-string"
+```
+
+Tạo secret ngẫu nhiên:
+```bash
+openssl rand -base64 32
+```
+
+---
+
+#### ❌ Lỗi 4: Session không có `id` hoặc `role`
+
+**Nguyên nhân:** Chưa cấu hình callbacks trong Auth config.
+
+**Cách fix:** Đảm bảo có callbacks `jwt` và `session` trong `src/lib/auth.ts` (xem code mẫu ở trên).
+
+---
+
+#### ❌ Lỗi 5: Prisma adapter không hoạt động
+
+**Nguyên nhân:** Cần các model bổ sung cho Auth.js trong Prisma schema.
+
+**Cách fix:** Đảm bảo `prisma/schema.prisma` có các model sau:
+```prisma
+model Account {
+  id                String  @id @default(cuid())
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+```
+
+Sau đó chạy:
+```bash
+npx prisma db push
+npx prisma generate
+```
 
 -----
 
