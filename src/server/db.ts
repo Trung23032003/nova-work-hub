@@ -1,34 +1,52 @@
-import { PrismaClient } from "@prisma/client";
-
 /**
- * Prisma Client Singleton Pattern
+ * Prisma Client Singleton
  * 
- * Giải thích tại sao cần pattern này:
- * - Trong development, Next.js hot-reload sẽ tạo nhiều instances
- * - Mỗi PrismaClient là 1 connection pool riêng
- * - Nếu tạo nhiều instances → lỗi "Too many connections"
+ * Sử dụng Driver Adapter (bắt buộc cho Prisma 7)
+ * Import file này để sử dụng Prisma trong toàn app:
  * 
- * Pattern này đảm bảo:
- * - Production: Tạo 1 instance duy nhất
- * - Development: Lưu instance vào globalThis để reuse
+ * import { prisma } from "@/server/db";
  */
 
-// Khai báo biến toàn cục để TypeScript hiểu
+import "dotenv/config";
+import { Pool } from "pg";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient } from "@prisma/client";
+
+// Lấy connection string từ environment
+const connectionString = process.env.DATABASE_URL;
+
+if (!connectionString) {
+    throw new Error(
+        "DATABASE_URL is not set. Please check your .env file."
+    );
+}
+
+// Tạo connection pool
+const pool = new Pool({ connectionString });
+
+// Tạo adapter cho PostgreSQL
+const adapter = new PrismaPg(pool);
+
+// Singleton pattern để tránh tạo nhiều instances trong development
+// (Next.js hot reload sẽ tạo nhiều instances nếu không dùng pattern này)
 const globalForPrisma = globalThis as unknown as {
     prisma: PrismaClient | undefined;
 };
 
-// Khởi tạo Prisma Client với các options
 export const prisma =
     globalForPrisma.prisma ??
     new PrismaClient({
+        adapter,
+        // Bật logging trong development
         log:
             process.env.NODE_ENV === "development"
-                ? ["query", "error", "warn"] // Log queries trong dev
-                : ["error"], // Chỉ log errors trong production
+                ? ["query", "error", "warn"]
+                : ["error"],
     });
 
-// Lưu vào global trong development
 if (process.env.NODE_ENV !== "production") {
     globalForPrisma.prisma = prisma;
 }
+
+// Export mặc định
+export default prisma;

@@ -86,86 +86,137 @@
 ### 1.2. Cấu trúc thư mục
 
 ```
-src/
-├── actions/           # Server Actions
-├── components/
-│   ├── ui/            # Shadcn components
-│   ├── layout/        # Sidebar, Header
-│   └── features/      # Task, Project components
-├── constants/         # App configs, enums
-├── hooks/             # Custom React hooks
-├── lib/               # Utilities (utils.ts, zod-schemas.ts)
-├── providers/         # React Providers
-├── server/
-│   ├── db.ts          # Prisma Client
-│   └── services/      # Business logic
-└── types/             # TypeScript definitions
+nova-work-hub/
+├── prisma/
+│   ├── migrations/        # SQL migrations
+│   ├── schema.prisma      # Database schema
+│   └── seed.ts            # Seed data script
+├── src/
+│   ├── actions/           # Server Actions
+│   ├── app/               # Next.js App Router
+│   ├── components/
+│   │   ├── ui/            # Shadcn components
+│   │   ├── layout/        # Sidebar, Header
+│   │   └── features/      # Task, Project components
+│   ├── constants/         # App configs, enums
+│   ├── hooks/             # Custom React hooks
+│   ├── lib/               # Utilities (utils.ts, zod-schemas.ts)
+│   ├── providers/         # React Providers
+│   ├── server/
+│   │   └── db.ts          # Prisma Client Singleton
+│   └── types/             # TypeScript definitions
+├── prisma.config.ts       # Prisma 7 configuration
+├── .env                   # Environment variables (git ignored)
+└── .env.example           # Environment template
 ```
 
 ---
 
 ### 1.3. Setup Database & Prisma 7 (Supabase)
 
-> **Lưu ý:** Prisma 7 thay đổi cách cấu hình - URL nằm trong `prisma.config.ts`, không còn trong `schema.prisma`.
+> **⚠️ QUAN TRỌNG - Prisma 7 có nhiều thay đổi lớn:**
+> 1. URL database nằm trong `prisma.config.ts`, không còn trong `schema.prisma`
+> 2. **Bắt buộc dùng Driver Adapter** để khởi tạo PrismaClient trong runtime
+> 3. Không còn tự động load `.env` - phải import `dotenv/config` thủ công
+
+---
 
 #### Bước 1: Tạo Project trên Supabase
+
+**Mục đích:** Tạo PostgreSQL database miễn phí trên cloud.
 
 1. Truy cập: https://supabase.com/ → Đăng ký/Đăng nhập
 2. Click **"New Project"**
 3. Điền thông tin:
    - **Name:** `nova-work-hub`
-   - **Database Password:** Ghi nhớ password này!
-   - **Region:** Singapore (gần Việt Nam)
+   - **Database Password:** Ghi nhớ password này! (dùng cho connection string)
+   - **Region:** Singapore (gần Việt Nam nhất)
 4. Đợi ~2 phút để project được tạo
 
-#### Bước 2: Lấy Connection String
+> 💡 **Lưu ý:** Project miễn phí sẽ bị **pause sau 7 ngày không hoạt động**. Vào dashboard để resume nếu cần.
+
+---
+
+#### Bước 2: Lấy Connection Strings
+
+**Mục đích:** Lấy 2 loại connection string cho các mục đích khác nhau.
 
 1. Vào **Project Settings** (icon bánh răng) → **Database**
 2. Cuộn xuống phần **Connection string** → Chọn tab **URI**
-3. Copy **Transaction pooler** (Port 6543):
-   ```
-   postgres://postgres.[project-ref]:[password]@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres
-   ```
+3. Lấy **2 connection strings:**
 
-> ⚠️ **Quan trọng:** Thay `[password]` bằng password bạn đặt ở Bước 1
+| Loại | Port | Mục đích sử dụng |
+|------|------|------------------|
+| **Transaction pooler** | 6543 | App runtime (PrismaClient) |
+| **Session pooler / Direct** | 5432 | Prisma CLI (migrate, push) |
+
+**Ví dụ:**
+```env
+# Transaction pooler (port 6543) - cho app runtime
+DATABASE_URL="postgres://postgres.xxx:[PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
+
+# Direct connection (port 5432) - cho Prisma CLI
+DIRECT_URL="postgres://postgres.xxx:[PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres"
+```
+
+> ⚠️ **Quan trọng:** 
+> - Thay `[PASSWORD]` bằng password bạn đặt ở Bước 1
+> - Thêm `?pgbouncer=true` vào cuối DATABASE_URL
+
+---
 
 #### Bước 3: Cấu hình `.env`
 
-Tạo file `.env` từ `.env.example`:
+**Mục đích:** Lưu trữ thông tin nhạy cảm (credentials) tách biệt khỏi code.
+
 ```powershell
 copy .env.example .env
 ```
 
 Cập nhật file `.env`:
 ```env
-# --- DATABASE (Supabase) ---
-DATABASE_URL="postgres://postgres.[project-ref]:[YOUR_PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres"
+# ===========================================
+# DATABASE (Supabase PostgreSQL)
+# ===========================================
+# Transaction pooler - dùng cho app runtime
+DATABASE_URL="postgres://postgres.xxx:[YOUR_PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
 
-# --- AUTHENTICATION ---
-AUTH_SECRET="your-secret-key"
+# Direct connection - dùng cho Prisma CLI (migrate, push)
+DIRECT_URL="postgres://postgres.xxx:[YOUR_PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres"
+
+# ===========================================
+# AUTHENTICATION (Auth.js v5)
+# ===========================================
+AUTH_SECRET="your-random-secret-key-32-chars-min"
 AUTH_URL="http://localhost:3000"
 ```
 
+---
+
 #### Bước 4: Cấu hình Prisma 7
 
-**`prisma.config.ts`** (root folder):
+**Mục đích:** Cấu hình Prisma để đọc database URL từ environment variables.
+
+**File `prisma.config.ts`** (root folder):
 ```typescript
 import "dotenv/config";
 import { defineConfig, env } from "prisma/config";
 
 export default defineConfig({
-  schema: "prisma/schema.prisma",
-  migrations: {
-    path: "prisma/migrations",
-    seed: "npx tsx prisma/seed.ts",
-  },
-  datasource: {
-    url: env("DATABASE_URL"),
-  },
+    schema: "prisma/schema.prisma",
+    migrations: {
+        path: "prisma/migrations",
+        seed: "npx tsx prisma/seed.ts",
+    },
+    datasource: {
+        // Dùng DIRECT_URL cho CLI commands (port 5432)
+        // Fallback về DATABASE_URL nếu không có DIRECT_URL
+        url: env("DIRECT_URL") || env("DATABASE_URL"),
+    },
 });
 ```
 
-**`prisma/schema.prisma`**:
+**File `prisma/schema.prisma`:**
 ```prisma
 generator client {
   provider = "prisma-client-js"
@@ -174,28 +225,101 @@ generator client {
 datasource db {
   provider = "postgresql"
   // URL được cấu hình trong prisma.config.ts (Prisma 7+)
+  // KHÔNG đặt url ở đây nữa!
 }
 
-// Enums và 18 Models (xem file 04_database-schema-novawork-hub.md)
+// Enums và Models (xem file 04_database-schema-novawork-hub.md)
 ```
+
+---
 
 #### Bước 5: Chạy Prisma Commands
 
+##### 5.1. Generate Prisma Client
+
 ```bash
-# Generate Prisma Client
 npx prisma generate
+```
 
-# Tạo migration và apply
-npx prisma migrate dev --name init_schema
+**Tác dụng:** Tạo TypeScript types và Prisma Client từ schema. File được generate vào `node_modules/@prisma/client`.
 
-# Seed dữ liệu mẫu
+**Khi nào cần chạy lại:**
+- Mỗi khi thay đổi `schema.prisma`
+- Sau khi cài lại `node_modules`
+
+##### 5.2. Đẩy Schema lên Database
+
+```bash
+npx prisma db push
+```
+
+**Tác dụng:** Đồng bộ schema với database thật. Tạo các tables, enums, indexes.
+
+> ⚠️ **Lưu ý:** Lệnh này có thể bị **treo (timeout)** nếu dùng sai PORT. Xem phần xử lý lỗi bên dưới.
+
+##### 5.3. Seed dữ liệu mẫu
+
+```bash
 npx prisma db seed
+```
 
-# Xem database trong browser
+**Tác dụng:** Chạy file `prisma/seed.ts` để tạo dữ liệu mẫu (users, departments, projects, tasks).
+
+##### 5.4. Xem database (Optional)
+
+```bash
 npx prisma studio
 ```
 
-> 💡 **Tip:** Bạn cũng có thể xem data trực tiếp trong Supabase Dashboard → **Table Editor**
+**Tác dụng:** Mở GUI trong browser để xem và chỉnh sửa data.
+
+---
+
+#### Bước 6: Cài Driver Adapter (BẮT BUỘC cho Prisma 7)
+
+**Mục đích:** Prisma 7 yêu cầu driver adapter để khởi tạo PrismaClient.
+
+```bash
+npm install @prisma/adapter-pg pg
+npm install -D @types/pg
+```
+
+---
+
+#### Bước 7: Tạo Prisma Client Singleton
+
+**Mục đích:** Tạo instance PrismaClient dùng chung trong toàn app, tránh tạo nhiều connections.
+
+**File `src/server/db.ts`:**
+```typescript
+import "dotenv/config";
+import { Pool } from "pg";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient } from "@prisma/client";
+
+// Connection pool
+const connectionString = process.env.DATABASE_URL;
+
+if (!connectionString) {
+    throw new Error("DATABASE_URL is not set in .env");
+}
+
+const pool = new Pool({ connectionString });
+const adapter = new PrismaPg(pool);
+
+// Singleton pattern để tránh tạo nhiều instances trong development
+const globalForPrisma = globalThis as unknown as {
+    prisma: PrismaClient | undefined;
+};
+
+export const prisma = globalForPrisma.prisma ?? new PrismaClient({ adapter });
+
+if (process.env.NODE_ENV !== "production") {
+    globalForPrisma.prisma = prisma;
+}
+
+export default prisma;
+```
 
 ---
 
@@ -215,25 +339,62 @@ npx shadcn@latest add button input form card dialog sheet dropdown-menu avatar b
 
 | File | Mô tả |
 |------|-------|
-| `src/server/db.ts` | Prisma Client Singleton |
+| `prisma.config.ts` | Cấu hình Prisma 7 (datasource URL) |
+| `prisma/schema.prisma` | Database schema (models, enums) |
+| `prisma/seed.ts` | Script seed dữ liệu mẫu |
+| `src/server/db.ts` | Prisma Client Singleton với Driver Adapter |
 | `src/lib/utils.ts` | Utility `cn()` cho TailwindCSS |
-| `src/lib/zod-schemas.ts` | Validation schemas |
-| `src/constants/app-config.ts` | App config, routes |
-| `src/constants/enums.ts` | Enum labels và colors |
-| `src/types/next-auth.d.ts` | NextAuth type extensions |
-| `prisma/seed.ts` | Dữ liệu mẫu |
 
 ---
 
-### 1.6. Verify Setup
+### 1.6. Test Connection
+
+Tạo file test để xác nhận kết nối:
+
+**File `src/test-prisma.js`:**
+```javascript
+require("dotenv").config();
+const { Pool } = require("pg");
+const { PrismaPg } = require("@prisma/adapter-pg");
+const { PrismaClient } = require("@prisma/client");
+
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const adapter = new PrismaPg(pool);
+const prisma = new PrismaClient({ adapter });
+
+async function main() {
+    await prisma.$connect();
+    console.log("✅ Connected!");
+    
+    const counts = await Promise.all([
+        prisma.user.count(),
+        prisma.project.count(),
+    ]);
+    console.log("Users:", counts[0], "| Projects:", counts[1]);
+}
+
+main()
+    .finally(() => prisma.$disconnect())
+    .finally(() => pool.end());
+```
+
+Chạy test:
+```bash
+node src/test-prisma.js
+```
+
+---
+
+### 1.7. Verify Setup
 
 ```bash
-# Build project
 npm run build
+```
 
-# Kết quả mong đợi:
-# ✓ Compiled successfully
-# ✓ Generating static pages
+Kết quả mong đợi:
+```
+✓ Compiled successfully
+✓ Generating static pages
 ```
 
 ---
@@ -244,9 +405,10 @@ npm run build
 |------|--------|
 | Project structure | ✅ Done |
 | Dependencies installed | ✅ Done |
-| Prisma 7 configured | ✅ Done |
+| Prisma 7 + Driver Adapter configured | ✅ Done |
+| Database connected (Supabase) | ✅ Done |
+| Seed data created | ✅ Done |
 | Shadcn UI (17 components) | ✅ Done |
-| Database connected | ✅ Done |
 | `npm run build` passed | ✅ Done |
 
 ---
@@ -255,29 +417,168 @@ npm run build
 
 | Lệnh | Mô tả |
 |------|-------|
-| `npx prisma generate` | Tạo Prisma Client |
-| `npx prisma migrate dev` | Tạo và apply migration |
+| `npx prisma generate` | Tạo Prisma Client từ schema |
+| `npx prisma db push` | Đẩy schema lên database (dev) |
+| `npx prisma migrate dev` | Tạo và apply migration (production) |
 | `npx prisma db seed` | Chạy seed data |
 | `npx prisma studio` | GUI xem database |
 | `npx prisma --version` | Xem version Prisma |
 
 ---
 
-### 🚨 Xử lý lỗi thường gặp (Supabase)
+### 🚨 Xử lý lỗi thường gặp
 
-**Lỗi: "Can't reach database server"**
-→ Kiểm tra kết nối internet và Supabase project đang active (không bị pause)
+#### ❌ Lỗi 1: `prisma db push` bị treo (timeout)
 
-**Lỗi: "password authentication failed"**
-→ Kiểm tra lại password trong `.env` (phải giống password khi tạo project)
-
-**Lỗi: "connection refused" hoặc timeout**
-→ Đảm bảo dùng đúng Connection pooler URL (port 6543, không phải 5432)
-
-**Lỗi: "prepared statement already exists"**
-→ Thêm `?pgbouncer=true` vào cuối DATABASE_URL:
+**Triệu chứng:** 
 ```
+Datasource "db": PostgreSQL database "postgres"...
+(lệnh treo không phản hồi)
+```
+
+**Nguyên nhân:** Dùng **port 6543 (pooler)** cho CLI commands. Pooler không ổn định cho schema operations.
+
+**Cách fix:** 
+1. Thêm `DIRECT_URL` với **port 5432** vào `.env`:
+   ```env
+   DIRECT_URL="postgres://...@...supabase.com:5432/postgres"
+   ```
+2. Cập nhật `prisma.config.ts`:
+   ```typescript
+   datasource: {
+       url: env("DIRECT_URL") || env("DATABASE_URL"),
+   },
+   ```
+
+---
+
+#### ❌ Lỗi 2: `PrismaClientInitializationError`
+
+**Triệu chứng:**
+```
+PrismaClientInitializationError: `PrismaClient` is unable to run in this browser environment
+```
+
+**Nguyên nhân:** Prisma 7 **bắt buộc dùng Driver Adapter** cho relational databases.
+
+**Cách fix:**
+1. Cài driver adapter:
+   ```bash
+   npm install @prisma/adapter-pg pg
+   ```
+2. Khởi tạo PrismaClient với adapter:
+   ```typescript
+   import { Pool } from "pg";
+   import { PrismaPg } from "@prisma/adapter-pg";
+   import { PrismaClient } from "@prisma/client";
+
+   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+   const adapter = new PrismaPg(pool);
+   const prisma = new PrismaClient({ adapter });
+   ```
+
+---
+
+#### ❌ Lỗi 3: `datasource url is no longer allowed in schema`
+
+**Triệu chứng:**
+```
+The datasource property `url` is no longer allowed in schema.prisma
+```
+
+**Nguyên nhân:** Prisma 7 không cho phép `url` trong `schema.prisma` nữa.
+
+**Cách fix:** Xóa dòng `url = env("DATABASE_URL")` trong datasource block:
+```prisma
+datasource db {
+  provider = "postgresql"
+  // KHÔNG có dòng url ở đây!
+}
+```
+
+---
+
+#### ❌ Lỗi 4: `Can't reach database server`
+
+**Triệu chứng:**
+```
+Can't reach database server at `aws-0-ap-southeast-1.pooler.supabase.com`
+```
+
+**Nguyên nhân:** 
+- Supabase project bị **pause** (sau 7 ngày không hoạt động)
+- Kết nối internet có vấn đề
+
+**Cách fix:**
+1. Vào https://supabase.com/dashboard
+2. Kiểm tra project có đang **Active** không
+3. Nếu bị pause → Click **"Resume project"**
+
+---
+
+#### ❌ Lỗi 5: `password authentication failed`
+
+**Triệu chứng:**
+```
+password authentication failed for user "postgres.xxx"
+```
+
+**Nguyên nhân:** Password trong connection string sai.
+
+**Cách fix:** 
+1. Vào Supabase Dashboard → **Project Settings** → **Database**
+2. Click **"Reset database password"** để lấy password mới
+3. Cập nhật lại `.env`
+
+---
+
+#### ❌ Lỗi 6: `prepared statement already exists`
+
+**Triệu chứng:**
+```
+prepared statement "s0" already exists
+```
+
+**Nguyên nhân:** Dùng pooler connection mà không có flag `pgbouncer=true`.
+
+**Cách fix:** Thêm `?pgbouncer=true` vào cuối DATABASE_URL:
+```env
 DATABASE_URL="postgres://...@...supabase.com:6543/postgres?pgbouncer=true"
+```
+
+---
+
+#### ❌ Lỗi 7: Seed thất bại với `PrismaClientInitializationError`
+
+**Triệu chứng:** `npx prisma db seed` thất bại.
+
+**Nguyên nhân:** File `seed.ts` chưa dùng Driver Adapter.
+
+**Cách fix:** Cập nhật đầu file `prisma/seed.ts`:
+```typescript
+import "dotenv/config";
+import { Pool } from "pg";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient } from "@prisma/client";
+
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const adapter = new PrismaPg(pool);
+const prisma = new PrismaClient({ adapter });
+```
+
+Và cuối file thêm `pool.end()`:
+```typescript
+main()
+    .then(async () => {
+        await prisma.$disconnect();
+        await pool.end();
+    })
+    .catch(async (e) => {
+        console.error(e);
+        await prisma.$disconnect();
+        await pool.end();
+        process.exit(1);
+    });
 ```
 
 -----

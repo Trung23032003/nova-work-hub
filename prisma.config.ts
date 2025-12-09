@@ -8,7 +8,8 @@ export default defineConfig({
         seed: "npx tsx prisma/seed.ts",
     },
     datasource: {
-        url: env("DATABASE_URL"),
-        shadowDatabaseUrl: env("DIRECT_URL"),
+        // Sử dụng DIRECT_URL cho migrations (port 5432, không qua pooler)
+        // DATABASE_URL (port 6543) dùng cho runtime trong app
+        url: env("DIRECT_URL") || env("DATABASE_URL"),
     },
 });

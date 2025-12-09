@@ -1,3 +1,6 @@
+import "dotenv/config";
+import { Pool } from "pg";
+import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient, UserRole, UserStatus, ProjectStatus, Priority, TaskStatus } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
@@ -12,7 +15,10 @@ import bcrypt from "bcryptjs";
  * 3. Project mẫu với Tasks
  */
 
-const prisma = new PrismaClient();
+// Prisma 7: Sử dụng driver adapter
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const adapter = new PrismaPg(pool);
+const prisma = new PrismaClient({ adapter });
 
 async function main() {
     console.log("🌱 Bắt đầu seed database...\n");
@@ -289,9 +295,11 @@ async function main() {
 main()
     .then(async () => {
         await prisma.$disconnect();
+        await pool.end();
     })
     .catch(async (e) => {
         console.error("❌ Lỗi khi seed:", e);
         await prisma.$disconnect();
+        await pool.end();
         process.exit(1);
     });

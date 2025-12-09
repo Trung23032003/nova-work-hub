@@ -1,12 +1,3 @@
-// ===========================================
-// PRISMA SCHEMA CHO NOVAWORK HUB
-// ===========================================
-// Giải thích:
-// - generator: Cấu hình để Prisma tạo TypeScript client
-// - datasource: Kết nối database (PostgreSQL qua Supabase)
-// - enums: Định nghĩa các giá trị cố định (như dropdown options)
-// - models: Định nghĩa các bảng database
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -15,145 +6,67 @@ datasource db {
   provider = "postgresql"
 }
 
-// ===========================================
-// ENUMS - Các giá trị liệt kê cố định
-// ===========================================
-
-// Vai trò người dùng trong hệ thống
-enum UserRole {
-  ADMIN // Quản trị viên hệ thống
-  PM // Project Manager - Quản lý dự án
-  MEMBER // Thành viên thông thường
-  VIEWER // Chỉ xem, không edit
-}
-
-// Trạng thái tài khoản
-enum UserStatus {
-  ACTIVE // Đang hoạt động
-  INACTIVE // Không hoạt động
-  LOCKED // Bị khóa
-}
-
-// Trạng thái dự án
-enum ProjectStatus {
-  PLANNING // Đang lên kế hoạch
-  IN_PROGRESS // Đang thực hiện
-  ON_HOLD // Tạm dừng
-  DONE // Hoàn thành
-  CANCELED // Đã hủy
-}
-
-// Độ ưu tiên (dùng chung cho Project & Task)
-enum Priority {
-  LOW // Thấp
-  MEDIUM // Trung bình
-  HIGH // Cao
-  CRITICAL // Khẩn cấp
-}
-
-// Trạng thái Task (các cột trong Kanban board)
-enum TaskStatus {
-  TODO // Cần làm
-  IN_PROGRESS // Đang làm
-  REVIEW // Đang review
-  DONE // Hoàn thành
-}
-
-// Loại form nội bộ
-enum FormType {
-  LEAVE_REQUEST // Xin nghỉ
-  EQUIPMENT_REQUEST // Cấp thiết bị
-  FEEDBACK // Góp ý
-  BUG_INTERNAL // Báo lỗi hệ thống
-  OTHER
-}
-
-// Trạng thái Form
-enum FormStatus {
-  PENDING // Chờ duyệt
-  APPROVED // Đã duyệt
-  REJECTED // Từ chối
-  CANCELED // Đã hủy
-}
-
-// ===========================================
-// AUTH MODELS - Tương thích với Auth.js v5
-// ===========================================
-
 model User {
-  id            String    @id @default(cuid()) // CUID ngắn hơn UUID, URL-safe
-  name          String?
-  email         String?   @unique
-  emailVerified DateTime?
-  image         String? // Avatar URL
-  password      String? // Hash password (null nếu dùng OAuth)
-
-  role   UserRole   @default(MEMBER)
-  status UserStatus @default(ACTIVE)
-
-  // Quan hệ với phòng ban
-  departmentId String?
-  department   Department? @relation(fields: [departmentId], references: [id])
-
-  // Auth.js relations
-  accounts Account[]
-  sessions Session[]
-
-  // Business relations
-  managedProjects Project[]          @relation("ProjectManager")
-  projectMembers  ProjectMember[]
-  assignedTasks   Task[]             @relation("TaskAssignee")
-  reportedTasks   Task[]             @relation("TaskReporter")
+  id              String             @id @default(cuid())
+  name            String?
+  email           String?            @unique
+  emailVerified   DateTime?
+  image           String?
+  password        String?
+  role            UserRole           @default(MEMBER)
+  status          UserStatus         @default(ACTIVE)
+  departmentId    String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  accounts        Account[]
+  auditLogs       AuditLog[]
   comments        Comment[]
-  timeLogs        TimeLog[]
-  formsRequested  InternalForm[]     @relation("FormRequester")
   formsApproved   InternalForm[]     @relation("FormApprover")
+  formsRequested  InternalForm[]     @relation("FormRequester")
   articles        KnowledgeArticle[]
   notifications   Notification[]
-  auditLogs       AuditLog[]
+  projectMembers  ProjectMember[]
+  managedProjects Project[]          @relation("ProjectManager")
+  sessions        Session[]
+  assignedTasks   Task[]             @relation("TaskAssignee")
+  reportedTasks   Task[]             @relation("TaskReporter")
+  timeLogs        TimeLog[]
+  department      Department?        @relation(fields: [departmentId], references: [id])
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("users") // Tên bảng trong DB là số nhiều
+  @@map("users")
 }
 
 model Department {
-  id          String  @id @default(cuid())
+  id          String   @id @default(cuid())
   name        String
-  code        String  @unique // VD: DEV, MKT, HR
+  code        String   @unique
   description String?
-
-  users User[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  users       User[]
 
   @@map("departments")
 }
 
-// Bảng Account để lưu thông tin OAuth (Google, GitHub...)
 model Account {
   id                String  @id @default(cuid())
   userId            String
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
   @@map("accounts")
 }
 
-// Session table cho Auth.js
 model Session {
   id           String   @id @default(cuid())
   sessionToken String   @unique
@@ -164,100 +77,74 @@ model Session {
   @@map("sessions")
 }
 
-// ===========================================
-// BUSINESS MODELS - Dự án & Task
-// ===========================================
-
 model Project {
-  id          String  @id @default(cuid())
+  id          String          @id @default(cuid())
   name        String
-  code        String  @unique // VD: PRJ-001
-  slug        String? @unique // VD: du-an-website
-  description String? @db.Text
+  code        String          @unique
+  slug        String?         @unique
+  description String?
   clientName  String?
-
-  status   ProjectStatus @default(PLANNING)
-  priority Priority      @default(MEDIUM)
-
+  status      ProjectStatus   @default(PLANNING)
+  priority    Priority        @default(MEDIUM)
   startDate   DateTime?
   dueDate     DateTime?
   completedAt DateTime?
-  budget      Decimal?  @db.Decimal(10, 2)
-
-  // Người quản lý (PM)
-  pmId String
-  pm   User   @relation("ProjectManager", fields: [pmId], references: [id])
-
-  // Relations
-  tasks       Task[]
+  budget      Decimal?        @db.Decimal(10, 2)
+  pmId        String
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
   attachments Attachment[]
   members     ProjectMember[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  pm          User            @relation("ProjectManager", fields: [pmId], references: [id])
+  tasks       Task[]
 
   @@index([status])
   @@index([pmId])
   @@map("projects")
 }
 
-// Bảng trung gian: quản lý members trong project
 model ProjectMember {
-  id        String @id @default(cuid())
+  id        String   @id @default(cuid())
   projectId String
   userId    String
-  role      String @default("MEMBER") // LEAD, MEMBER, OBSERVER
+  role      String   @default("MEMBER")
+  joinedAt  DateTime @default(now())
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  joinedAt DateTime @default(now())
-
-  @@unique([projectId, userId]) // Một user chỉ join project 1 lần
+  @@unique([projectId, userId])
   @@map("project_members")
 }
 
 model Task {
-  id          String  @id @default(cuid())
-  title       String
-  description String? @db.Text
-
-  status   TaskStatus @default(TODO)
-  priority Priority   @default(MEDIUM)
-  type     String? // bug, feature, meeting...
-
-  // Logic Kanban: position là số float để dễ sắp xếp
-  // VD: Chèn task giữa position 1.0 và 2.0 -> position 1.5
-  position Float @default(0)
-
+  id            String              @id @default(cuid())
+  title         String
+  description   String?
+  status        TaskStatus          @default(TODO)
+  priority      Priority            @default(MEDIUM)
+  type          String?
+  position      Float               @default(0)
   startDate     DateTime?
   dueDate       DateTime?
-  estimateHours Float?    @default(0)
+  estimateHours Float?              @default(0)
+  projectId     String
+  assigneeId    String?
+  reporterId    String
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  attachments   Attachment[]
+  comments      Comment[]
+  subtasks      TaskChecklistItem[]
+  assignee      User?               @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  project       Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  reporter      User                @relation("TaskReporter", fields: [reporterId], references: [id])
+  timeLogs      TimeLog[]
 
-  // Relations
-  projectId String
-  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-
-  assigneeId String?
-  assignee   User?   @relation("TaskAssignee", fields: [assigneeId], references: [id])
-
-  reporterId String
-  reporter   User   @relation("TaskReporter", fields: [reporterId], references: [id])
-
-  subtasks    TaskChecklistItem[]
-  comments    Comment[]
-  timeLogs    TimeLog[]
-  attachments Attachment[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([projectId, status]) // Tối ưu filter Kanban board
+  @@index([projectId, status])
   @@index([assigneeId])
   @@map("tasks")
 }
 
-// Checklist items trong task
 model TaskChecklistItem {
   id     String  @id @default(cuid())
   title  String
@@ -268,143 +155,161 @@ model TaskChecklistItem {
   @@map("task_checklist_items")
 }
 
-// ===========================================
-// INTERACTION MODELS - Comment & Time Log
-// ===========================================
-
 model Comment {
-  id      String @id @default(cuid())
-  content String @db.Text
-
-  taskId String
-  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
-
-  authorId String
-  author   User   @relation(fields: [authorId], references: [id])
-
+  id        String   @id @default(cuid())
+  content   String
+  taskId    String
+  authorId  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  author    User     @relation(fields: [authorId], references: [id])
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
   @@map("comments")
 }
 
 model TimeLog {
-  id    String   @id @default(cuid())
-  hours Float // Số giờ log (VD: 1.5)
-  date  DateTime @default(now())
-  note  String?  @db.Text
-
-  taskId String
-  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
-
-  userId String
-  user   User   @relation(fields: [userId], references: [id])
-
+  id        String   @id @default(cuid())
+  hours     Float
+  date      DateTime @default(now())
+  note      String?
+  taskId    String
+  userId    String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id])
 
-  @@index([userId, date]) // Tối ưu report timesheet
+  @@index([userId, date])
   @@map("time_logs")
 }
 
-// ===========================================
-// UTILITY MODELS - Forms, Files, Knowledge
-// ===========================================
-
 model InternalForm {
-  id          String     @id @default(cuid())
+  id          String       @id @default(cuid())
   type        FormType
   title       String
-  description String     @db.Text
-  status      FormStatus @default(PENDING)
-
-  reason String? // Lý do duyệt/từ chối
-
+  description String
+  status      FormStatus   @default(PENDING)
+  reason      String?
   requesterId String
-  requester   User   @relation("FormRequester", fields: [requesterId], references: [id])
-
-  approverId String?
-  approver   User?   @relation("FormApprover", fields: [approverId], references: [id])
-
+  approverId  String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
   attachments Attachment[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  approver    User?        @relation("FormApprover", fields: [approverId], references: [id])
+  requester   User         @relation("FormRequester", fields: [requesterId], references: [id])
 
   @@map("internal_forms")
 }
 
-// Lưu trữ files (polymorphic - có thể thuộc nhiều entity)
 model Attachment {
-  id       String  @id @default(cuid())
-  fileName String
-  fileUrl  String // Public URL
-  fileKey  String // S3/Storage key để delete
-  fileType String? // MIME type
-  fileSize Int? // Bytes
-
-  // Polymorphic relations
-  taskId String?
-  task   Task?   @relation(fields: [taskId], references: [id], onDelete: SetNull)
-
-  projectId String?
-  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
-
+  id             String        @id @default(cuid())
+  fileName       String
+  fileUrl        String
+  fileKey        String
+  fileType       String?
+  fileSize       Int?
+  taskId         String?
+  projectId      String?
   internalFormId String?
-  internalForm   InternalForm? @relation(fields: [internalFormId], references: [id], onDelete: SetNull)
-
-  uploaderId String?
-
-  createdAt DateTime @default(now())
+  uploaderId     String?
+  createdAt      DateTime      @default(now())
+  internalForm   InternalForm? @relation(fields: [internalFormId], references: [id])
+  project        Project?      @relation(fields: [projectId], references: [id])
+  task           Task?         @relation(fields: [taskId], references: [id])
 
   @@map("attachments")
 }
 
 model KnowledgeArticle {
-  id       String   @id @default(cuid())
-  title    String
-  slug     String   @unique
-  content  String   @db.Text
-  isPublic Boolean  @default(false)
-  tags     String[] // PostgreSQL hỗ trợ array
-
-  authorId String
-  author   User   @relation(fields: [authorId], references: [id])
-
+  id        String   @id @default(cuid())
+  title     String
+  slug      String   @unique
+  content   String
+  isPublic  Boolean  @default(false)
+  tags      String[]
+  authorId  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  author    User     @relation(fields: [authorId], references: [id])
 
   @@map("knowledge_articles")
 }
 
 model Notification {
-  id      String  @id @default(cuid())
-  type    String // ASSIGNED, MENTIONED, DEADLINE...
-  title   String
-  message String?
-  isRead  Boolean @default(false)
-  link    String?
-
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
+  id        String   @id @default(cuid())
+  type      String
+  title     String
+  message   String?
+  isRead    Boolean  @default(false)
+  link      String?
+  userId    String
   createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, isRead])
   @@map("notifications")
 }
 
 model AuditLog {
-  id       String @id @default(cuid())
-  action   String // CREATE, UPDATE, DELETE
-  entity   String // TASK, PROJECT
-  entityId String
-  details  Json? // Lưu thay đổi: { old: "A", new: "B" }
-
-  actorId String
-  actor   User   @relation(fields: [actorId], references: [id])
-
+  id        String   @id @default(cuid())
+  action    String
+  entity    String
+  entityId  String
+  details   Json?
+  actorId   String
   createdAt DateTime @default(now())
+  actor     User     @relation(fields: [actorId], references: [id])
 
   @@map("audit_logs")
+}
+
+enum UserRole {
+  ADMIN
+  PM
+  MEMBER
+  VIEWER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  LOCKED
+}
+
+enum ProjectStatus {
+  PLANNING
+  IN_PROGRESS
+  ON_HOLD
+  DONE
+  CANCELED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  REVIEW
+  DONE
+}
+
+enum FormType {
+  LEAVE_REQUEST
+  EQUIPMENT_REQUEST
+  FEEDBACK
+  BUG_INTERNAL
+  OTHER
+}
+
+enum FormStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELED
 }
