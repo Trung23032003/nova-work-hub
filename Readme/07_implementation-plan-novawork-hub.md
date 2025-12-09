@@ -89,8 +89,7 @@ nova-work-hub/
 │   │   └── db.ts          # Prisma Client Singleton
 │   └── types/             # TypeScript definitions
 ├── prisma.config.ts       # Prisma 7 configuration
-├── .env                   # Environment variables (git ignored)
-└── .env.example           # Environment template
+└── .env                   # Environment variables (git ignored)
 ```
 
 ---
