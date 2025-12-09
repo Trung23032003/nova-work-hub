@@ -50,388 +50,191 @@
 
 ## Giai đoạn 1: Khởi tạo Project & Cơ sở hạ tầng (Foundation)
 
-**Mục tiêu:** Có một project chạy được, kết nối Database thành công và có đầy đủ thư viện nền.
+**Mục tiêu:** Có project chạy được, kết nối Database thành công, đầy đủ thư viện nền.
 
-**Kết quả mong đợi:**
-- ✅ Next.js 16 với App Router, TypeScript, TailwindCSS
-- ✅ Prisma ORM với schema đầy đủ
+**Kết quả đạt được:**
+- ✅ Next.js 15 với App Router, TypeScript, TailwindCSS v4
+- ✅ Prisma 7.1.0 với PostgreSQL
 - ✅ Shadcn UI với 17+ components
-- ✅ Cấu trúc thư mục chuyên nghiệp
 - ✅ `npm run build` thành công
 
 ---
 
-### 1.1. Setup Next.js & Environment
-
-> **Giải thích:** Next.js là React framework hỗ trợ SSR, SSG và nhiều tính năng production-ready.
+### 1.1. Setup Next.js & Dependencies
 
 - [x] **Khởi tạo dự án:**
   ```bash
   npx create-next-app@latest ./ --typescript --tailwind --eslint --app --src-dir --no-import-alias --skip-install
-  # Nếu hỏi React Compiler -> Chọn No
   ```
-  
-  | Flag | Ý nghĩa |
-  |------|---------|
-  | `--typescript` | Sử dụng TypeScript cho type safety |
-  | `--tailwind` | Tích hợp TailwindCSS |
-  | `--eslint` | Code linting |
-  | `--app` | Sử dụng App Router (mới nhất) |
-  | `--src-dir` | Tạo thư mục `src/` tách code khỏi configs |
 
-- [x] **Cài đặt Core Dependencies:**
+- [x] **Cài đặt Dependencies:**
   ```bash
   npm install
 
-  # Core & Auth
+  # Core
   npm install next-auth@beta @prisma/client @tanstack/react-query zustand date-fns lucide-react
 
   # Utils
   npm install clsx tailwind-merge zod react-hook-form sonner @hookform/resolvers bcryptjs
-  ```
 
-  | Package | Mục đích |
-  |---------|----------|
-  | `next-auth@beta` | Authentication (Google OAuth, Credentials) |
-  | `@prisma/client` | ORM để tương tác database |
-  | `@tanstack/react-query` | Server state management, caching |
-  | `zustand` | Client state management (nhẹ hơn Redux) |
-  | `date-fns` | Xử lý ngày tháng |
-  | `lucide-react` | Icon library |
-  | `zod` | Schema validation |
-  | `react-hook-form` | Form handling hiệu quả |
-  | `sonner` | Toast notifications đẹp |
-  | `bcryptjs` | Hash passwords |
-
-- [x] **Cài đặt Dev Dependencies:**
-  ```bash
-  npm install -D prisma ts-node @types/bcryptjs dotenv
-  ```
-
-- [x] **Setup `.env.example`:**
-  
-  Tạo file `.env.example` với template (xem file `05_preparation-checklist-novawork-hub.md`):
-  ```bash
-  # --- DATABASE (Supabase Pooling) ---
-  DATABASE_URL="postgres://[user]:[password]@[host]:6543/[db_name]?pgbouncer=true"
-  
-  # --- AUTHENTICATION ---
-  AUTH_SECRET="your-auth-secret-here"
-  AUTH_URL="http://localhost:3000"
-  AUTH_GOOGLE_ID="your-google-client-id"
-  AUTH_GOOGLE_SECRET="your-google-client-secret"
+  # Dev
+  npm install -D prisma@latest @types/bcryptjs dotenv tsx
   ```
 
 ---
 
 ### 1.2. Cấu trúc thư mục
 
-> **Giải thích:** Cấu trúc thư mục hợp lý giúp dự án dễ maintain và scale.
-
-- [x] Tạo các folder theo cấu trúc:
-  ```bash
-  mkdir -p src/actions
-  mkdir -p src/components/ui
-  mkdir -p src/components/layout
-  mkdir -p src/components/features
-  mkdir -p src/constants
-  mkdir -p src/hooks
-  mkdir -p src/lib
-  mkdir -p src/providers
-  mkdir -p src/server/services
-  mkdir -p src/types
-  ```
-
-  | Thư mục | Mục đích |
-  |---------|----------|
-  | `src/actions/` | Server Actions - gọi từ client để mutation data |
-  | `src/server/services/` | Business logic thuần (không phụ thuộc framework) |
-  | `src/providers/` | React Context/Providers (Session, Theme, Query) |
-  | `src/types/` | TypeScript type definitions |
-  | `src/constants/` | App configs, enum mappings |
-  | `src/lib/` | Utilities và helpers |
-  | `src/components/ui/` | Base UI components (Shadcn) |
-  | `src/components/layout/` | Layout components (Sidebar, Header) |
-  | `src/components/features/` | Domain-specific components (Task, Project) |
-
-- [x] **Tạo file `src/lib/utils.ts`:**
-  ```typescript
-  import { clsx, type ClassValue } from "clsx";
-  import { twMerge } from "tailwind-merge";
-
-  /**
-   * Merge CSS classes thông minh
-   * - clsx: Conditional class names
-   * - twMerge: Giải quyết xung đột TailwindCSS
-   */
-  export function cn(...inputs: ClassValue[]) {
-    return twMerge(clsx(inputs));
-  }
-  ```
-
-- [x] **Tạo file `src/constants/app-config.ts`:**
-  ```typescript
-  export const APP_CONFIG = {
-    name: "NovaWork Hub",
-    description: "Hệ thống quản lý công việc nội bộ doanh nghiệp",
-    url: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
-  } as const;
-
-  export const ROUTES = {
-    home: "/",
-    login: "/login",
-    dashboard: "/dashboard",
-    projects: "/projects",
-    tasks: "/tasks",
-  } as const;
-  ```
-
-- [x] **Tạo file `src/constants/enums.ts`:**
-  ```typescript
-  // Mapping enum values → display text (tiếng Việt) và màu badge
-  export const TASK_STATUS_LABELS = {
-    TODO: "Cần làm",
-    IN_PROGRESS: "Đang làm",
-    REVIEW: "Đang review",
-    DONE: "Hoàn thành",
-  } as const;
-
-  export const TASK_STATUS_COLORS = {
-    TODO: "bg-slate-100 text-slate-800",
-    IN_PROGRESS: "bg-blue-100 text-blue-800",
-    REVIEW: "bg-orange-100 text-orange-800",
-    DONE: "bg-green-100 text-green-800",
-  } as const;
-  // ... tương tự cho PROJECT_STATUS, PRIORITY, USER_ROLE
-  ```
-
-- [x] **Tạo file `src/types/next-auth.d.ts`** (mở rộng NextAuth types):
-  ```typescript
-  import "next-auth";
-
-  declare module "next-auth" {
-    interface Session {
-      user: {
-        id: string;
-        email: string;
-        name: string;
-        role: "ADMIN" | "PM" | "MEMBER" | "VIEWER";
-        departmentId?: string | null;
-      };
-    }
-  }
-  ```
-
-- [x] **Tạo file `src/types/api.ts`** (response types chuẩn):
-  ```typescript
-  export type SuccessResponse<T> = {
-    success: true;
-    data: T;
-    message?: string;
-  };
-
-  export type ErrorResponse = {
-    success: false;
-    error: string;
-    code?: string;
-  };
-
-  export type ApiResponse<T> = SuccessResponse<T> | ErrorResponse;
-  ```
-
-- [x] **Tạo file `src/lib/zod-schemas.ts`** (validation schemas):
-  ```typescript
-  import { z } from "zod";
-
-  export const LoginSchema = z.object({
-    email: z.string().min(1, "Email là bắt buộc").email("Email không hợp lệ"),
-    password: z.string().min(1, "Mật khẩu là bắt buộc").min(6, "Tối thiểu 6 ký tự"),
-  });
-
-  export const CreateProjectSchema = z.object({
-    name: z.string().min(1, "Tên dự án là bắt buộc").max(200),
-    code: z.string().regex(/^[A-Z0-9-]+$/, "Mã dự án chỉ chứa IN HOA, số và -"),
-    // ... các fields khác
-  });
-
-  export type LoginInput = z.infer<typeof LoginSchema>;
-  ```
+```
+src/
+├── actions/           # Server Actions
+├── components/
+│   ├── ui/            # Shadcn components
+│   ├── layout/        # Sidebar, Header
+│   └── features/      # Task, Project components
+├── constants/         # App configs, enums
+├── hooks/             # Custom React hooks
+├── lib/               # Utilities (utils.ts, zod-schemas.ts)
+├── providers/         # React Providers
+├── server/
+│   ├── db.ts          # Prisma Client
+│   └── services/      # Business logic
+└── types/             # TypeScript definitions
+```
 
 ---
 
-### 1.3. Setup Database & Prisma
+### 1.3. Setup Database & Prisma 7 (Supabase)
 
-> **Giải thích:** Prisma là ORM hiện đại với schema-first approach và auto-generated TypeScript types.
+> **Lưu ý:** Prisma 7 thay đổi cách cấu hình - URL nằm trong `prisma.config.ts`, không còn trong `schema.prisma`.
 
-- [x] **Khởi tạo Prisma:**
-  ```bash
-  npx prisma init
-  ```
-  
-  Lệnh này tạo:
-  - `prisma/schema.prisma` - Database schema
-  - `prisma.config.ts` - Config file (Prisma v7+)
-  - `.env` - Environment variables
+#### Bước 1: Tạo Project trên Supabase
 
-- [x] **Cập nhật `prisma/schema.prisma`:**
-  
-  Copy schema từ file `04_database-schema-novawork-hub.md`. Lưu ý Prisma v7+ cấu hình URL trong `prisma.config.ts`:
-  
-  ```prisma
-  generator client {
-    provider = "prisma-client-js"
-  }
+1. Truy cập: https://supabase.com/ → Đăng ký/Đăng nhập
+2. Click **"New Project"**
+3. Điền thông tin:
+   - **Name:** `nova-work-hub`
+   - **Database Password:** Ghi nhớ password này!
+   - **Region:** Singapore (gần Việt Nam)
+4. Đợi ~2 phút để project được tạo
 
-  datasource db {
-    provider = "postgresql"
-  }
+#### Bước 2: Lấy Connection String
 
-  // Enums
-  enum UserRole {
-    ADMIN
-    PM
-    MEMBER
-    VIEWER
-  }
-  
-  // ... 18 models (User, Project, Task, Comment, etc.)
-  ```
+1. Vào **Project Settings** (icon bánh răng) → **Database**
+2. Cuộn xuống phần **Connection string** → Chọn tab **URI**
+3. Copy **Transaction pooler** (Port 6543):
+   ```
+   postgres://postgres.[project-ref]:[password]@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres
+   ```
 
-- [x] **Tạo file `src/server/db.ts`** (Prisma Client Singleton):
-  ```typescript
-  import { PrismaClient } from "@prisma/client";
+> ⚠️ **Quan trọng:** Thay `[password]` bằng password bạn đặt ở Bước 1
 
-  /**
-   * Singleton Pattern - tránh lỗi "Too many connections" trong development
-   * Hot-reload tạo nhiều instances → dùng globalThis để reuse
-   */
-  const globalForPrisma = globalThis as unknown as {
-    prisma: PrismaClient | undefined;
-  };
+#### Bước 3: Cấu hình `.env`
 
-  export const prisma =
-    globalForPrisma.prisma ??
-    new PrismaClient({
-      log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
-    });
+Tạo file `.env` từ `.env.example`:
+```powershell
+copy .env.example .env
+```
 
-  if (process.env.NODE_ENV !== "production") {
-    globalForPrisma.prisma = prisma;
-  }
-  ```
+Cập nhật file `.env`:
+```env
+# --- DATABASE (Supabase) ---
+DATABASE_URL="postgres://postgres.[project-ref]:[YOUR_PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres"
 
-- [x] **Tạo file `prisma/seed.ts`** (dữ liệu mẫu):
-  ```typescript
-  import { PrismaClient, UserRole, TaskStatus } from "@prisma/client";
-  import bcrypt from "bcryptjs";
+# --- AUTHENTICATION ---
+AUTH_SECRET="your-secret-key"
+AUTH_URL="http://localhost:3000"
+```
 
-  const prisma = new PrismaClient();
+#### Bước 4: Cấu hình Prisma 7
 
-  async function main() {
-    // 1. Tạo Departments
-    const devDept = await prisma.department.upsert({
-      where: { code: "DEV" },
-      update: {},
-      create: { code: "DEV", name: "Phòng Phát triển" },
-    });
+**`prisma.config.ts`** (root folder):
+```typescript
+import "dotenv/config";
+import { defineConfig, env } from "prisma/config";
 
-    // 2. Tạo Admin user
-    const hashedPassword = await bcrypt.hash("Password@123", 10);
-    await prisma.user.upsert({
-      where: { email: "admin@novawork.local" },
-      update: {},
-      create: {
-        email: "admin@novawork.local",
-        name: "Admin NovaWork",
-        password: hashedPassword,
-        role: UserRole.ADMIN,
-        departmentId: devDept.id,
-      },
-    });
+export default defineConfig({
+  schema: "prisma/schema.prisma",
+  migrations: {
+    path: "prisma/migrations",
+    seed: "npx tsx prisma/seed.ts",
+  },
+  datasource: {
+    url: env("DATABASE_URL"),
+  },
+});
+```
 
-    // 3. Tạo Project và Tasks mẫu
-    // ... (xem chi tiết trong prisma/seed.ts)
-  }
+**`prisma/schema.prisma`**:
+```prisma
+generator client {
+  provider = "prisma-client-js"
+}
 
-  main()
-    .then(() => prisma.$disconnect())
-    .catch((e) => { console.error(e); process.exit(1); });
-  ```
+datasource db {
+  provider = "postgresql"
+  // URL được cấu hình trong prisma.config.ts (Prisma 7+)
+}
 
-- [x] **Cập nhật `package.json`** để chạy seed:
-  ```json
-  {
-    "prisma": {
-      "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"
-    }
-  }
-  ```
+// Enums và 18 Models (xem file 04_database-schema-novawork-hub.md)
+```
 
-- [ ] **Migration (sau khi có DATABASE_URL thực):**
-  ```bash
-  # Tạo và apply migration
-  npx prisma migrate dev --name init_schema
+#### Bước 5: Chạy Prisma Commands
 
-  # Chạy seed data
-  npx prisma db seed
+```bash
+# Generate Prisma Client
+npx prisma generate
 
-  # Mở Studio để xem data
-  npx prisma studio
-  ```
+# Tạo migration và apply
+npx prisma migrate dev --name init_schema
+
+# Seed dữ liệu mẫu
+npx prisma db seed
+
+# Xem database trong browser
+npx prisma studio
+```
+
+> 💡 **Tip:** Bạn cũng có thể xem data trực tiếp trong Supabase Dashboard → **Table Editor**
 
 ---
 
-### 1.4. Setup UI Base (Shadcn)
+### 1.4. Setup Shadcn UI
 
-> **Giải thích:** Shadcn UI copy code vào project (không phải npm import) → full control để customize.
+```bash
+# Init Shadcn (auto-detect Next.js, TailwindCSS v4)
+npx shadcn@latest init -d
 
-- [x] **Init Shadcn:**
-  ```bash
-  npx shadcn@latest init -d
-  # Tự động detect Next.js, TailwindCSS v4
-  ```
-
-- [x] **Cài đặt Components cơ bản:**
-  ```bash
-  npx shadcn@latest add button input form card dialog sheet dropdown-menu avatar badge separator table tabs textarea select scroll-area skeleton -y
-  ```
-
-  Kết quả: 17 components trong `src/components/ui/`:
-  - `button.tsx`, `input.tsx`, `textarea.tsx`
-  - `form.tsx`, `label.tsx`
-  - `card.tsx`, `dialog.tsx`, `sheet.tsx`
-  - `dropdown-menu.tsx`, `select.tsx`
-  - `avatar.tsx`, `badge.tsx`
-  - `table.tsx`, `tabs.tsx`
-  - `scroll-area.tsx`, `skeleton.tsx`, `separator.tsx`
+# Cài components cơ bản
+npx shadcn@latest add button input form card dialog sheet dropdown-menu avatar badge separator table tabs textarea select scroll-area skeleton -y
+```
 
 ---
 
-### 1.5. Verify Build
+### 1.5. Các file quan trọng đã tạo
 
-- [x] **Generate Prisma Client (với placeholder URL):**
-  ```bash
-  # Windows PowerShell
-  $env:DATABASE_URL="postgresql://user:password@localhost:5432/test"; npx prisma generate
+| File | Mô tả |
+|------|-------|
+| `src/server/db.ts` | Prisma Client Singleton |
+| `src/lib/utils.ts` | Utility `cn()` cho TailwindCSS |
+| `src/lib/zod-schemas.ts` | Validation schemas |
+| `src/constants/app-config.ts` | App config, routes |
+| `src/constants/enums.ts` | Enum labels và colors |
+| `src/types/next-auth.d.ts` | NextAuth type extensions |
+| `prisma/seed.ts` | Dữ liệu mẫu |
 
-  # Linux/Mac
-  DATABASE_URL="postgresql://user:password@localhost:5432/test" npx prisma generate
-  ```
+---
 
-- [x] **Build project:**
-  ```bash
-  npm run build
-  ```
-  
-  Kết quả mong đợi:
-  ```
-  ✓ Compiled successfully
-  ✓ Finished TypeScript
-  ✓ Generating static pages
-  Route (app)
-  ├ ○ /
-  └ ○ /_not-found
-  ```
+### 1.6. Verify Setup
+
+```bash
+# Build project
+npm run build
+
+# Kết quả mong đợi:
+# ✓ Compiled successfully
+# ✓ Generating static pages
+```
 
 ---
 
@@ -439,67 +242,43 @@
 
 | Task | Status |
 |------|--------|
-| Project structure created | ✅ Done |
-| Core dependencies installed | ✅ Done |
-| Prisma schema defined (18 models) | ✅ Done |
-| Shadcn UI initialized (17 components) | ✅ Done |
-| Type definitions created | ✅ Done |
-| Zod validation schemas | ✅ Done |
-| `npm run build` thành công | ✅ Done |
-| Database connected | ⏳ Cần DATABASE_URL thực |
-| Prisma Studio hiển thị data | ⏳ Sau khi migrate |
+| Project structure | ✅ Done |
+| Dependencies installed | ✅ Done |
+| Prisma 7 configured | ✅ Done |
+| Shadcn UI (17 components) | ✅ Done |
+| Database connected | ✅ Done |
+| `npm run build` passed | ✅ Done |
 
 ---
 
-### 📁 Cấu trúc thư mục sau GĐ 1
+### 🔧 Lệnh Prisma Thường Dùng
 
-```
-nova-work-hub/
-├── prisma/
-│   ├── schema.prisma      # Database schema
-│   └── seed.ts            # Seed data script
-├── src/
-│   ├── actions/           # (GĐ2+)
-│   ├── app/
-│   │   ├── globals.css
-│   │   ├── layout.tsx
-│   │   └── page.tsx
-│   ├── components/
-│   │   ├── ui/            # 17 Shadcn components
-│   │   ├── layout/        # (GĐ2)
-│   │   └── features/      # (GĐ3+)
-│   ├── constants/
-│   │   ├── app-config.ts
-│   │   └── enums.ts
-│   ├── hooks/             # (khi cần)
-│   ├── lib/
-│   │   ├── utils.ts
-│   │   └── zod-schemas.ts
-│   ├── providers/         # (GĐ2)
-│   ├── server/
-│   │   ├── db.ts
-│   │   └── services/      # (GĐ3+)
-│   └── types/
-│       ├── api.ts
-│       ├── nav.ts
-│       ├── next-auth.d.ts
-│       └── index.ts
-├── .env.example
-├── package.json
-└── prisma.config.ts
-```
+| Lệnh | Mô tả |
+|------|-------|
+| `npx prisma generate` | Tạo Prisma Client |
+| `npx prisma migrate dev` | Tạo và apply migration |
+| `npx prisma db seed` | Chạy seed data |
+| `npx prisma studio` | GUI xem database |
+| `npx prisma --version` | Xem version Prisma |
 
 ---
 
-### 🔜 Chuẩn bị cho Giai đoạn 2
+### 🚨 Xử lý lỗi thường gặp (Supabase)
 
-Trước khi bắt đầu GĐ2, cần hoàn thành:
+**Lỗi: "Can't reach database server"**
+→ Kiểm tra kết nối internet và Supabase project đang active (không bị pause)
 
-1. **Tạo Supabase account** và project mới
-2. **Copy DATABASE_URL** từ Supabase Dashboard
-3. **Tạo file `.env`** từ `.env.example` với values thực
-4. **Chạy migration:** `npx prisma migrate dev --name init_schema`
-5. **Chạy seed:** `npx prisma db seed`
+**Lỗi: "password authentication failed"**
+→ Kiểm tra lại password trong `.env` (phải giống password khi tạo project)
+
+**Lỗi: "connection refused" hoặc timeout**
+→ Đảm bảo dùng đúng Connection pooler URL (port 6543, không phải 5432)
+
+**Lỗi: "prepared statement already exists"**
+→ Thêm `?pgbouncer=true` vào cuối DATABASE_URL:
+```
+DATABASE_URL="postgres://...@...supabase.com:6543/postgres?pgbouncer=true"
+```
 
 -----
 
