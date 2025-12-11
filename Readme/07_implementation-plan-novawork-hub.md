@@ -576,7 +576,7 @@ toast.warning("Cảnh báo");
 - ✅ Nút đăng nhập Google OAuth
 - ✅ Xử lý lỗi với thông báo rõ ràng
 - ✅ Hiển thị thông tin tài khoản test
-- ✅ Giao diện dark mode đẹp mắt
+- ✅ Giao diện light mode đẹp mắt
 - ✅ Redirect về `callbackUrl` sau khi login
 
 ---
@@ -617,7 +617,7 @@ const session = await auth();
 | **URL** | `/` (homepage) |
 
 **Tính năng:**
-- ✅ Giao diện dark mode đẹp mắt
+- ✅ Giao diện light mode đẹp mắt
 - ✅ Hiển thị tên app và mô tả
 - ✅ Kiểm tra trạng thái đăng nhập
 - ✅ **Chưa login:** Hiển thị nút "Đăng nhập" + "Đăng ký"
