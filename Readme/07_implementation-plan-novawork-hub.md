@@ -630,280 +630,234 @@ const session = await auth();
 
 ---
 
-### 2.5. Dashboard Layout (Frontend)
+### 2.5. Dashboard Layout (Frontend) ✅
 
-#### Bước 1: Tạo Menu Config
+> [!IMPORTANT]
+> **ĐÃ HOÀN THÀNH** - Dashboard Layout với Sidebar và Header
 
-**File `src/constants/menus.ts`:**
-```typescript
-import {
-    Home,
-    FolderKanban,
-    CheckSquare,
-    Users,
-    Settings,
-    Shield,
-    type LucideIcon,
-} from "lucide-react";
+---
 
-export interface MenuItem {
-    title: string;
-    href: string;
-    icon: LucideIcon;
-    adminOnly?: boolean;
-}
+#### 📁 Cấu trúc thư mục (Route Group)
 
-export const mainMenuItems: MenuItem[] = [
-    { title: "Dashboard", href: "/dashboard", icon: Home },
-    { title: "Dự án", href: "/projects", icon: FolderKanban },
-    { title: "Công việc", href: "/tasks", icon: CheckSquare },
-    { title: "Nhân sự", href: "/users", icon: Users },
-];
+```
+src/app/
+├── (dashboard)/           ← Route Group (không ảnh hưởng URL)
+│   ├── layout.tsx         ← Layout chung: Sidebar + Header + Content
+│   ├── dashboard/
+│   │   └── page.tsx       ← URL: /dashboard
+│   ├── projects/
+│   │   └── page.tsx       ← URL: /projects
+│   ├── tasks/
+│   │   └── page.tsx       ← URL: /tasks
+│   ├── users/
+│   │   └── page.tsx       ← URL: /users
+│   ├── settings/
+│   │   └── page.tsx       ← URL: /settings
+│   └── admin/
+│       └── page.tsx       ← URL: /admin
+├── login/
+│   └── page.tsx           ← URL: /login (không có sidebar)
+└── page.tsx               ← URL: / (landing page)
+```
 
-export const adminMenuItems: MenuItem[] = [
-    { title: "Quản trị", href: "/admin", icon: Shield, adminOnly: true },
-    { title: "Cài đặt", href: "/settings", icon: Settings },
-];
+**Lưu ý về Route Group:**
+- Folder `(dashboard)` với dấu ngoặc đơn là **Route Group**
+- Route Group **KHÔNG ảnh hưởng đến URL**
+- Tất cả pages trong folder này sẽ sử dụng chung `layout.tsx`
+
+---
+
+#### 📁 File 1: Menu Config
+
+| Thông tin | Chi tiết |
+|-----------|----------|
+| **File** | `src/constants/menus.ts` |
+| **Mục đích** | Cấu hình menu items cho Sidebar |
+
+**Tính năng:**
+- ✅ `mainMenuItems`: Menu chính (Dashboard, Dự án, Công việc, Nhân sự)
+- ✅ `adminMenuItems`: Menu quản trị (Quản trị - Admin only, Cài đặt)
+- ✅ Interface `MenuItem` với type-safe icons từ Lucide
+
+---
+
+#### 📁 File 2: Main Sidebar
+
+| Thông tin | Chi tiết |
+|-----------|----------|
+| **File** | `src/components/layout/main-sidebar.tsx` |
+| **Loại** | Client Component (`"use client"`) |
+
+**Tính năng:**
+- ✅ Hiển thị logo và tên app
+- ✅ Menu items với icons
+- ✅ Active state highlighting (dựa trên `usePathname()`)
+- ✅ Role-based menu filtering (Admin vs User)
+- ✅ ScrollArea cho menu dài
+
+---
+
+#### 📁 File 3: Header
+
+| Thông tin | Chi tiết |
+|-----------|----------|
+| **File** | `src/components/layout/header.tsx` |
+| **Loại** | Client Component (`"use client"`) |
+
+**Tính năng:**
+- ✅ Theme toggle button (Light/Dark mode)
+- ✅ User avatar với initials
+- ✅ Role badge hiển thị
+- ✅ Dropdown menu (Hồ sơ, Đăng xuất)
+- ✅ Fix hydration mismatch với mounted state
+
+---
+
+#### 📁 File 4: Sidebar Context
+
+| Thông tin | Chi tiết |
+|-----------|----------|
+| **File** | `src/contexts/sidebar-context.tsx` |
+| **Loại** | Client Component (`"use client"`) |
+| **Mục đích** | Quản lý trạng thái ẩn/hiện sidebar |
+
+**Tính năng:**
+- ✅ `SidebarProvider` - Wrap layout để share state
+- ✅ `useSidebar()` hook - Access state từ bất kỳ component nào
+- ✅ Lưu preference vào localStorage
+
+**Cách sử dụng:**
+```tsx
+// Trong layout
+<SidebarProvider>
+    <MainSidebar />
+    <Header />
+</SidebarProvider>
+
+// Trong component
+const { isOpen, toggle } = useSidebar();
 ```
 
 ---
 
-#### Bước 2: Tạo Sidebar Component
+#### 📁 File 5: Dashboard Layout
 
-**File `src/components/layout/main-sidebar.tsx`:**
-```tsx
-"use client";
+| Thông tin | Chi tiết |
+|-----------|----------|
+| **File** | `src/app/(dashboard)/layout.tsx` |
+| **Loại** | Server Component |
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useSession } from "next-auth/react";
-import { cn } from "@/lib/utils";
-import { mainMenuItems, adminMenuItems } from "@/constants/menus";
-import { ScrollArea } from "@/components/ui/scroll-area";
+**Cấu trúc layout:**
+```
+┌──────────────────────────────────────────────────────────┐
+│  Sidebar (fixed)  │         Header (sticky)              │
+│  [Toggle] 🚀 Logo ├──────────────────────────────────────│
+│   - Dashboard     │                                      │
+│   - Dự án         │         Main Content Area            │
+│   - Công việc     │         (children)                   │
+└──────────────────────────────────────────────────────────┘
+```
 
-export function MainSidebar() {
-    const pathname = usePathname();
-    const { data: session } = useSession();
-    const isAdmin = session?.user?.role === "ADMIN";
+**Wrap với SidebarProvider:** Layout được wrap với `<SidebarProvider>` để quản lý trạng thái sidebar.
 
-    const allMenuItems = isAdmin
-        ? [...mainMenuItems, ...adminMenuItems]
-        : [...mainMenuItems, ...adminMenuItems.filter((item) => !item.adminOnly)];
+---
 
-    return (
-        <aside className="w-64 border-r bg-card h-screen sticky top-0">
-            <div className="p-4 border-b">
-                <h1 className="text-xl font-bold">NovaWork Hub</h1>
-            </div>
-            <ScrollArea className="h-[calc(100vh-65px)]">
-                <nav className="p-4 space-y-1">
-                    {allMenuItems.map((item) => {
-                        const isActive = pathname === item.href;
-                        return (
-                            <Link
-                                key={item.href}
-                                href={item.href}
-                                className={cn(
-                                    "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
-                                    isActive
-                                        ? "bg-primary text-primary-foreground"
-                                        : "hover:bg-muted"
-                                )}
-                            >
-                                <item.icon className="h-4 w-4" />
-                                {item.title}
-                            </Link>
-                        );
-                    })}
-                </nav>
-            </ScrollArea>
-        </aside>
-    );
-}
+#### 📁 File 6: Dashboard Page
+
+| Thông tin | Chi tiết |
+|-----------|----------|
+| **File** | `src/app/(dashboard)/dashboard/page.tsx` |
+| **URL** | `/dashboard` |
+
+**Tính năng:**
+- ✅ Welcome message với tên user
+- ✅ 4 stat cards (Dự án, Công việc, Hoàn thành, Quá hạn)
+- ✅ Placeholder cho Recent Tasks và Team Activity
+
+---
+
+#### 📁 File 7-11: Các trang placeholder
+
+| File | URL | Mô tả |
+|------|-----|-------|
+| `(dashboard)/projects/page.tsx` | `/projects` | Danh sách dự án |
+| `(dashboard)/tasks/page.tsx` | `/tasks` | Danh sách công việc |
+| `(dashboard)/users/page.tsx` | `/users` | Danh sách nhân sự |
+| `(dashboard)/settings/page.tsx` | `/settings` | Cài đặt |
+| `(dashboard)/admin/page.tsx` | `/admin` | Trang quản trị (Admin only) |
+
+---
+
+### 2.5.1. Tính năng Collapse/Expand Sidebar ✅
+
+> [!IMPORTANT]
+> **ĐÃ HOÀN THÀNH** - Sidebar có thể thu gọn/mở rộng
+
+#### Cách hoạt động:
+
+| Trạng thái | Sidebar | Icon Toggle |
+|------------|---------|-------------|
+| **Mở (expanded)** | Rộng 256px, hiện đầy đủ text | Phần tối lớn hơn |
+| **Đóng (collapsed)** | Hẹp 64px, chỉ hiện icon | Phần trắng lớn hơn |
+
+#### Icon Toggle:
+```
+┌─────────────┐         ┌─────────────┐
+│ ████│      │         │ ██│         │
+│ ████│      │   →     │ ██│         │
+│ ████│      │         │ ██│         │
+└─────────────┘         └─────────────┘
+  Sidebar MỞ             Sidebar ĐÓNG
+(phần tối lớn)         (phần tối nhỏ)
+```
+
+#### Các file liên quan:
+
+| File | Thay đổi |
+|------|----------|
+| `src/contexts/sidebar-context.tsx` | Context quản lý state |
+| `src/components/layout/main-sidebar.tsx` | Logic collapse/expand + toggle icon |
+| `src/app/(dashboard)/layout.tsx` | Wrap với SidebarProvider |
+
+#### Cài đặt Tooltip (cho collapsed state):
+```bash
+npx shadcn@latest add tooltip -y
 ```
 
 ---
 
-#### Bước 3: Tạo Header Component
+#### ✅ Kết quả đạt được
 
-**File `src/components/layout/header.tsx`:**
-```tsx
-"use client";
-
-import { useSession, signOut } from "next-auth/react";
-import { useTheme } from "next-themes";
-import { Moon, Sun, LogOut, User } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-
-export function Header() {
-    const { data: session } = useSession();
-    const { setTheme, theme } = useTheme();
-
-    return (
-        <header className="h-16 border-b bg-card sticky top-0 z-10">
-            <div className="flex items-center justify-between h-full px-6">
-                <div>{/* Breadcrumb hoặc title sẽ thêm sau */}</div>
-
-                <div className="flex items-center gap-4">
-                    {/* Theme Toggle */}
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                    >
-                        <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-                        <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-                    </Button>
-
-                    {/* User Menu */}
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="gap-2">
-                                <Avatar className="h-8 w-8">
-                                    <AvatarFallback>
-                                        {session?.user?.name?.charAt(0) || "U"}
-                                    </AvatarFallback>
-                                </Avatar>
-                                <span className="hidden md:inline">
-                                    {session?.user?.name || "User"}
-                                </span>
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
-                                <User className="mr-2 h-4 w-4" />
-                                Hồ sơ
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => signOut()}>
-                                <LogOut className="mr-2 h-4 w-4" />
-                                Đăng xuất
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                </div>
-            </div>
-        </header>
-    );
-}
-```
-
----
-
-#### Bước 4: Tạo Dashboard Layout
-
-**File `src/app/(dashboard)/layout.tsx`:**
-```tsx
-import { MainSidebar } from "@/components/layout/main-sidebar";
-import { Header } from "@/components/layout/header";
-
-export default function DashboardLayout({
-    children,
-}: {
-    children: React.ReactNode;
-}) {
-    return (
-        <div className="flex min-h-screen">
-            <MainSidebar />
-            <div className="flex-1 flex flex-col">
-                <Header />
-                <main className="flex-1 p-6">{children}</main>
-            </div>
-        </div>
-    );
-}
-```
-
----
-
-#### Bước 5: Tạo trang Dashboard
-
-**File `src/app/(dashboard)/page.tsx`:**
-```tsx
-import { auth } from "@/lib/auth";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
-export default async function DashboardPage() {
-    const session = await auth();
-
-    return (
-        <div className="space-y-6">
-            <h1 className="text-3xl font-bold">
-                Xin chào, {session?.user?.name || "User"}! 👋
-            </h1>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Card>
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">
-                            Dự án đang hoạt động
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-2xl font-bold">--</p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">
-                            Công việc của tôi
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-2xl font-bold">--</p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">
-                            Hoàn thành hôm nay
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-2xl font-bold">--</p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">
-                            Quá hạn
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-2xl font-bold text-destructive">--</p>
-                    </CardContent>
-                </Card>
-            </div>
-        </div>
-    );
-}
-```
+- ✅ Sidebar với navigation menu động theo role
+- ✅ Sidebar collapse/expand với icon toggle
+- ✅ Tooltip hiển thị tên menu khi collapsed
+- ✅ Header với theme toggle và user dropdown
+- ✅ Layout responsive
+- ✅ Lưu trạng thái sidebar vào localStorage
+- ✅ Tất cả routes hoạt động
+- ✅ `npm run build` passed
 
 ---
 
 ### 2.6. Checklist thực hiện
 
-  - [ ] **Cài dependencies:** `@auth/prisma-adapter`, `next-themes`
-  - [ ] **Config Auth:** Tạo `src/lib/auth.ts` với CredentialsProvider và GoogleProvider
-  - [ ] **API Route:** Tạo `src/app/api/auth/[...nextauth]/route.ts`
-  - [ ] **Type definitions:** Tạo `src/types/next-auth.d.ts` mở rộng types
-  - [ ] **Middleware:** Tạo `middleware.ts` để bảo vệ routes
-  - [ ] **Providers Wrapper:** Tạo `src/providers/app-provider.tsx`
-  - [ ] **Root Layout:** Cập nhật `src/app/layout.tsx` với AppProvider
-  - [ ] **Login Page:** Tạo `src/app/login/page.tsx`
-  - [ ] **Menu Config:** Tạo `src/constants/menus.ts`
-  - [ ] **Sidebar:** Tạo `src/components/layout/main-sidebar.tsx`
-  - [ ] **Header:** Tạo `src/components/layout/header.tsx`
-  - [ ] **Dashboard Layout:** Tạo `src/app/(dashboard)/layout.tsx`
-  - [ ] **Dashboard Page:** Tạo `src/app/(dashboard)/page.tsx`
+  - [x] **Cài dependencies:** `@auth/prisma-adapter`, `next-themes`
+  - [x] **Config Auth:** Tạo `src/lib/auth.ts` với CredentialsProvider và GoogleProvider
+  - [x] **API Route:** Tạo `src/app/api/auth/[...nextauth]/route.ts`
+  - [x] **Type definitions:** Tạo `src/types/next-auth.d.ts` mở rộng types
+  - [x] **Middleware:** Tạo `middleware.ts` để bảo vệ routes
+  - [x] **Providers Wrapper:** Tạo `src/providers/app-provider.tsx`
+  - [x] **Root Layout:** Cập nhật `src/app/layout.tsx` với AppProvider
+  - [x] **Login Page:** Tạo `src/app/login/page.tsx`
+  - [x] **Menu Config:** Tạo `src/constants/menus.ts`
+  - [x] **Sidebar:** Tạo `src/components/layout/main-sidebar.tsx`
+  - [x] **Header:** Tạo `src/components/layout/header.tsx`
+  - [x] **Dashboard Layout:** Tạo `src/app/(dashboard)/layout.tsx`
+  - [x] **Dashboard Page:** Tạo `src/app/(dashboard)/dashboard/page.tsx`
+  - [x] **Các trang placeholder:** projects, tasks, users, settings, admin
+  - [x] **Sidebar Context:** Tạo `src/contexts/sidebar-context.tsx`
+  - [x] **Tooltip Component:** `npx shadcn@latest add tooltip`
+  - [x] **Sidebar Collapse/Expand:** Nút toggle với icon 2 phần
 
 ---
 
@@ -911,14 +865,15 @@ export default async function DashboardPage() {
 
 | Task | Status |
 |------|--------|
-| `@auth/prisma-adapter` cài đặt | ⬜ |
-| Auth config with Prisma 7 Driver Adapter | ⬜ |
-| Login/Logout hoạt động (Credentials) | ⬜ |
-| Google OAuth hoạt động (optional) | ⬜ |
-| Middleware bảo vệ `/dashboard` | ⬜ |
-| Sidebar hiển thị đúng menu theo role | ⬜ |
-| Theme toggle (dark/light) | ⬜ |
-| `npm run build` passed | ⬜ |
+| `@auth/prisma-adapter` cài đặt | ✅ |
+| Auth config with Prisma 7 Driver Adapter | ✅ |
+| Login/Logout hoạt động (Credentials) | ✅ |
+| Google OAuth hoạt động (optional) | ⬜ (chưa cấu hình GOOGLE_CLIENT_ID/SECRET) |
+| Middleware bảo vệ `/dashboard` | ✅ |
+| Sidebar hiển thị đúng menu theo role | ✅ |
+| Sidebar collapse/expand | ✅ |
+| Theme toggle (dark/light) | ✅ |
+| `npm run build` passed | ✅ |
 
 ---
 
@@ -1029,6 +984,98 @@ Sau đó chạy:
 npx prisma db push
 npx prisma generate
 ```
+
+---
+
+#### ❌ Lỗi 6: Hydration Mismatch với `next-themes`
+
+**Triệu chứng (Console Error):**
+```
+A tree hydrated but some attributes of the server rendered HTML didn't match the client properties.
+This won't be patched up. This can happen if a SSR-ed Client Component used:
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+...
+```
+
+**Nguyên nhân:** 
+- `next-themes` sử dụng `localStorage` để lưu theme preference
+- Server không có access đến `localStorage` → render HTML mặc định
+- Client đọc từ `localStorage` → render HTML khác với server
+- React phát hiện sự khác biệt → Hydration mismatch
+
+**Cách fix - Pattern "mounted" state:**
+
+Trong các Client Components sử dụng `useTheme()`, thêm logic chờ mount trước khi render theme-dependent content:
+
+```tsx
+"use client";
+
+import { useState, useEffect } from "react";
+import { useTheme } from "next-themes";
+import { Skeleton } from "@/components/ui/skeleton";
+
+export function ThemeToggle() {
+    // State để track xem client đã mount chưa
+    const [mounted, setMounted] = useState(false);
+    const { setTheme, theme } = useTheme();
+
+    // Effect chạy sau khi client mount
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    // Render skeleton khi chưa mount (server + client lần đầu đều render cái này)
+    if (!mounted) {
+        return <Skeleton className="h-9 w-9 rounded-md" />;
+    }
+
+    // Sau khi mount mới render theme toggle thật
+    return (
+        <Button onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
+            {theme === "dark" ? <Sun /> : <Moon />}
+        </Button>
+    );
+}
+
+```
+
+**Giải thích:**
+1. **Server render (SSR)**: `mounted = false` → render Skeleton
+2. **Client hydration**: `mounted = false` → render Skeleton (giống server ✅)
+3. **Sau useEffect chạy**: `mounted = true` → render Theme Toggle Button thực sự
+
+**Lưu ý bổ sung:**
+- Đảm bảo `<html>` tag có `suppressHydrationWarning` trong `layout.tsx`:
+```tsx
+<html lang="vi" suppressHydrationWarning>
+```
+
+---
+
+#### ❌ Lỗi 7: Route conflict - Two parallel pages resolve to same path
+
+**Triệu chứng:**
+```
+Error: You cannot have two parallel pages that resolve to the same path. 
+Please check /(dashboard)/dashboard and /dashboard.
+```
+
+**Nguyên nhân:** 
+- Có 2 file page.tsx cho cùng một URL
+- Ví dụ: `src/app/dashboard/page.tsx` và `src/app/(dashboard)/dashboard/page.tsx` đều tạo URL `/dashboard`
+
+**Cách fix:**
+1. Xóa một trong hai file (giữ file trong route group nếu muốn dùng layout chung):
+```bash
+Remove-Item -Path "src/app/dashboard" -Recurse -Force
+```
+2. Hoặc đổi tên folder để tránh conflict
+
+**Lưu ý về Route Group:**
+- Folder có dấu ngoặc đơn `(dashboard)` là **Route Group**
+- Route Group **KHÔNG ảnh hưởng đến URL**
+- `src/app/(dashboard)/dashboard/page.tsx` → URL vẫn là `/dashboard`
 
 -----
 
