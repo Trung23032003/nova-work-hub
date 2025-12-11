@@ -31,450 +31,206 @@
 
 ---
 
-## Giai đoạn 1: Khởi tạo Project & Cơ sở hạ tầng (Foundation)
+## Giai đoạn 1: Khởi tạo Project & Cơ sở hạ tầng (Foundation) ✅
 
 **Mục tiêu:** Có project chạy được, kết nối Database thành công, đầy đủ thư viện nền.
 
-**Kết quả đạt được:**
-- ✅ Next.js 15 với App Router, TypeScript, TailwindCSS v4
-- ✅ Prisma 7.1.0 với PostgreSQL
-- ✅ Shadcn UI với 17+ components
-- ✅ `npm run build` thành công
+> [!IMPORTANT]  
+> **ĐÃ HOÀN THÀNH** - Tất cả bước đã được thực hiện và test thành công.
 
 ---
 
-### 1.1. Cài đặt Next.js & Dependencies
+### ✅ Kết quả đạt được
 
-- [x] **Khởi tạo dự án:**
-  ```bash
-  npx create-next-app@latest ./ --typescript --tailwind --eslint --app --src-dir --no-import-alias --skip-install
-  ```
-
-- [x] **Cài đặt Dependencies:**
-  ```bash
-  npm install
-
-  # Core
-  npm install next-auth@beta @prisma/client @tanstack/react-query zustand date-fns lucide-react
-
-  # Utils
-  npm install clsx tailwind-merge zod react-hook-form sonner @hookform/resolvers bcryptjs
-
-  # Dev
-  npm install -D prisma@latest @types/bcryptjs dotenv tsx
-  ```
+| Thành phần | Phiên bản | Trạng thái |
+|------------|-----------|------------|
+| Next.js | 15+ (App Router) | ✅ |
+| TypeScript | 5.x | ✅ |
+| TailwindCSS | v4 | ✅ |
+| Prisma | 7.1.0 | ✅ |
+| PostgreSQL | Supabase | ✅ |
+| Shadcn UI | 17+ components | ✅ |
+| `npm run build` | Passed | ✅ |
 
 ---
 
-### 1.2. Cấu trúc thư mục dự án
+### 1.1. Cài đặt Next.js & Dependencies ✅
 
-```
-nova-work-hub/
-├── prisma/
-│   ├── migrations/        # SQL migrations
-│   ├── schema.prisma      # Database schema
-│   └── seed.ts            # Seed data script
-├── src/
-│   ├── actions/           # Server Actions
-│   ├── app/               # Next.js App Router
-│   ├── components/
-│   │   ├── ui/            # Shadcn components
-│   │   ├── layout/        # Sidebar, Header
-│   │   └── features/      # Task, Project components
-│   ├── constants/         # App configs, enums
-│   ├── hooks/             # Custom React hooks
-│   ├── lib/               # Utilities (utils.ts, zod-schemas.ts)
-│   ├── providers/         # React Providers
-│   ├── server/
-│   │   └── db.ts          # Prisma Client Singleton
-│   └── types/             # TypeScript definitions
-├── prisma.config.ts       # Prisma 7 configuration
-└── .env                   # Environment variables (git ignored)
-```
-
----
-
-### 1.3. Setup Database & Prisma 7 (Supabase)
-
-> **⚠️ QUAN TRỌNG - Prisma 7 có nhiều thay đổi lớn:**
-> 1. URL database nằm trong `prisma.config.ts`, không còn trong `schema.prisma`
-> 2. **Bắt buộc dùng Driver Adapter** để khởi tạo PrismaClient trong runtime
-> 3. Không còn tự động load `.env` - phải import `dotenv/config` thủ công
-
----
-
-#### Bước 1: Tạo Project trên Supabase
-
-**Mục đích:** Tạo PostgreSQL database miễn phí trên cloud.
-
-1. Truy cập: https://supabase.com/ → Đăng ký/Đăng nhập
-2. Click **"New Project"**
-3. Điền thông tin:
-   - **Name:** `nova-work-hub`
-   - **Database Password:** Ghi nhớ password này! (dùng cho connection string)
-   - **Region:** Singapore (gần Việt Nam nhất)
-4. Đợi ~2 phút để project được tạo
-
-> 💡 **Lưu ý:** Project miễn phí sẽ bị **pause sau 7 ngày không hoạt động**. Vào dashboard để resume nếu cần.
-
----
-
-#### Bước 2: Lấy Connection Strings
-
-**Mục đích:** Lấy 2 loại connection string cho các mục đích khác nhau.
-
-1. Vào **Project Settings** (icon bánh răng) → **Database**
-2. Cuộn xuống phần **Connection string** → Chọn tab **URI**
-3. Lấy **2 connection strings:**
-
-| Loại | Port | Mục đích sử dụng |
-|------|------|------------------|
-| **Transaction pooler** | 6543 | App runtime (PrismaClient) |
-| **Session pooler / Direct** | 5432 | Prisma CLI (migrate, push) |
-
-**Ví dụ:**
-```env
-# Transaction pooler (port 6543) - cho app runtime
-DATABASE_URL="postgres://postgres.xxx:[PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
-
-# Direct connection (port 5432) - cho Prisma CLI
-DIRECT_URL="postgres://postgres.xxx:[PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres"
-```
-
-> ⚠️ **Quan trọng:** 
-> - Thay `[PASSWORD]` bằng password bạn đặt ở Bước 1
-> - Thêm `?pgbouncer=true` vào cuối DATABASE_URL
-
----
-
-#### Bước 3: Cấu hình `.env`
-
-**Mục đích:** Lưu trữ thông tin nhạy cảm (credentials) tách biệt khỏi code.
-
-```powershell
-copy .env.example .env
-```
-
-Cập nhật file `.env`:
-```env
-# ===========================================
-# DATABASE (Supabase PostgreSQL)
-# ===========================================
-# Transaction pooler - dùng cho app runtime
-DATABASE_URL="postgres://postgres.xxx:[YOUR_PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
-
-# Direct connection - dùng cho Prisma CLI (migrate, push)
-DIRECT_URL="postgres://postgres.xxx:[YOUR_PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres"
-
-# ===========================================
-# AUTHENTICATION (Auth.js v5)
-# ===========================================
-AUTH_SECRET="your-random-secret-key-32-chars-min"
-AUTH_URL="http://localhost:3000"
-```
-
----
-
-#### Bước 4: Cấu hình Prisma 7
-
-**Mục đích:** Cấu hình Prisma để đọc database URL từ environment variables.
-
-**File `prisma.config.ts`** (root folder):
-```typescript
-import "dotenv/config";
-import { defineConfig, env } from "prisma/config";
-
-export default defineConfig({
-    schema: "prisma/schema.prisma",
-    migrations: {
-        path: "prisma/migrations",
-        seed: "npx tsx prisma/seed.ts",
-    },
-    datasource: {
-        // Dùng DIRECT_URL cho CLI commands (port 5432)
-        // Fallback về DATABASE_URL nếu không có DIRECT_URL
-        url: env("DIRECT_URL") || env("DATABASE_URL"),
-    },
-});
-```
-
-**File `prisma/schema.prisma`:**
-```prisma
-generator client {
-  provider = "prisma-client-js"
-}
-
-datasource db {
-  provider = "postgresql"
-  // URL được cấu hình trong prisma.config.ts (Prisma 7+)
-  // KHÔNG đặt url ở đây nữa!
-}
-
-// Enums và Models (xem file 04_database-schema-novawork-hub.md)
-```
-
----
-
-#### Bước 5: Chạy Prisma Commands
-
-##### 5.1. Generate Prisma Client
-
+**Lệnh khởi tạo:**
 ```bash
-npx prisma generate
+npx create-next-app@latest ./ --typescript --tailwind --eslint --app --src-dir --no-import-alias --skip-install
 ```
 
-**Tác dụng:** Tạo TypeScript types và Prisma Client từ schema. File được generate vào `node_modules/@prisma/client`.
-
-**Khi nào cần chạy lại:**
-- Mỗi khi thay đổi `schema.prisma`
-- Sau khi cài lại `node_modules`
-
-##### 5.2. Đẩy Schema lên Database
-
+**Dependencies đã cài:**
 ```bash
-npx prisma db push
-```
+# Core
+npm install next-auth@beta @prisma/client @tanstack/react-query zustand date-fns lucide-react
 
-**Tác dụng:** Đồng bộ schema với database thật. Tạo các tables, enums, indexes.
+# Utils
+npm install clsx tailwind-merge zod react-hook-form sonner @hookform/resolvers bcryptjs
 
-> ⚠️ **Lưu ý:** Lệnh này có thể bị **treo (timeout)** nếu dùng sai PORT. Xem phần xử lý lỗi bên dưới.
+# Dev
+npm install -D prisma@latest @types/bcryptjs dotenv tsx
 
-##### 5.3. Seed dữ liệu mẫu
-
-```bash
-npx prisma db seed
-```
-
-**Tác dụng:** Chạy file `prisma/seed.ts` để tạo dữ liệu mẫu (users, departments, projects, tasks).
-
-##### 5.4. Xem database (Optional)
-
-```bash
-npx prisma studio
-```
-
-**Tác dụng:** Mở GUI trong browser để xem và chỉnh sửa data.
-
----
-
-#### Bước 6: Cài Driver Adapter (BẮT BUỘC cho Prisma 7)
-
-**Mục đích:** Prisma 7 yêu cầu driver adapter để khởi tạo PrismaClient.
-
-```bash
+# Prisma 7 Driver Adapter (BẮT BUỘC)
 npm install @prisma/adapter-pg pg
 npm install -D @types/pg
 ```
 
 ---
 
-#### Bước 7: Tạo Prisma Client Singleton
+### 1.2. Cấu trúc thư mục dự án ✅
 
-**Mục đích:** Tạo instance PrismaClient dùng chung trong toàn app, tránh tạo nhiều connections.
+```
+nova-work-hub/
+├── prisma/
+│   ├── schema.prisma      # Database schema
+│   └── seed.ts            # Seed data script
+├── src/
+│   ├── actions/           # Server Actions
+│   ├── app/               # Next.js App Router
+│   ├── components/ui/     # Shadcn components
+│   ├── lib/               # Utilities (utils.ts, auth.ts)
+│   ├── server/db.ts       # Prisma Client Singleton
+│   └── types/             # TypeScript definitions
+├── prisma.config.ts       # Prisma 7 configuration
+├── middleware.ts          # Route protection
+└── .env                   # Environment variables
+```
 
-**File `src/server/db.ts`:**
+---
+
+### 1.3. Setup Database & Prisma 7 (Supabase) ✅
+
+> [!CAUTION]
+> **Prisma 7 có thay đổi lớn:**
+> 1. URL database nằm trong `prisma.config.ts`, KHÔNG trong `schema.prisma`
+> 2. **BẮT BUỘC dùng Driver Adapter** để khởi tạo PrismaClient
+> 3. Prisma 7 không tự động load `.env` - phải import `dotenv/config`
+
+---
+
+#### 📁 Các file cấu hình Prisma
+
+| File | Mục đích |
+|------|----------|
+| `prisma.config.ts` | Cấu hình datasource URL cho Prisma CLI |
+| `prisma/schema.prisma` | Định nghĩa models, enums, relations |
+| `src/server/db.ts` | Prisma Client Singleton với Driver Adapter |
+| `prisma/seed.ts` | Script tạo dữ liệu mẫu |
+
+---
+
+#### ⚙️ Cấu hình `.env`
+
+```env
+# DATABASE (Supabase)
+DATABASE_URL="postgres://...@...supabase.com:6543/postgres?pgbouncer=true"
+DIRECT_URL="postgres://...@...supabase.com:5432/postgres"
+
+# AUTHENTICATION
+AUTH_SECRET="novawork-hub-super-secret-key-for-development-only-32chars"
+AUTH_URL="http://localhost:3000"
+```
+
+| Biến | Port | Mục đích |
+|------|------|----------|
+| `DATABASE_URL` | 6543 | App runtime (PrismaClient) |
+| `DIRECT_URL` | 5432 | Prisma CLI (migrate, push, seed) |
+
+---
+
+#### 🔧 Lệnh Prisma thường dùng
+
+| Lệnh | Mô tả |
+|------|-------|
+| `npx prisma generate` | Tạo Prisma Client từ schema |
+| `npx prisma db push` | Đẩy schema lên database |
+| `npx prisma db seed` | Chạy seed data |
+| `npx prisma studio` | GUI xem database |
+
+---
+
+### 1.4. Setup Shadcn UI ✅
+
+```bash
+npx shadcn@latest init -d
+npx shadcn@latest add button input form card dialog sheet dropdown-menu avatar badge separator table tabs textarea select scroll-area skeleton -y
+```
+
+---
+
+### 1.5. Checkpoint Giai đoạn 1
+
+| Task | Status |
+|------|--------|
+| Project structure | ✅ |
+| Dependencies installed | ✅ |
+| Prisma 7 + Driver Adapter | ✅ |
+| Database connected (Supabase) | ✅ |
+| Seed data created | ✅ |
+| Shadcn UI components | ✅ |
+| `npm run build` passed | ✅ |
+
+---
+
+### � Xử lý lỗi thường gặp - Giai đoạn 1
+
+> [!TIP]
+> Các lỗi dưới đây thường gặp khi setup Prisma 7 với Supabase. **Giữ lại code fix lỗi để tham khảo.**
+
+---
+
+#### ❌ Lỗi 1: `prisma db push` bị treo (timeout)
+
+| Thông tin | Chi tiết |
+|-----------|----------|
+| **Triệu chứng** | Lệnh treo không phản hồi sau "Datasource db: PostgreSQL..." |
+| **Nguyên nhân** | Dùng port 6543 (pooler) cho CLI commands |
+
+**Code fix - `prisma.config.ts`:**
+```typescript
+datasource: {
+    // Dùng DIRECT_URL (port 5432) cho CLI, fallback về DATABASE_URL
+    url: env("DIRECT_URL") || env("DATABASE_URL"),
+},
+```
+
+---
+
+#### ❌ Lỗi 2: `PrismaClientInitializationError`
+
+| Thông tin | Chi tiết |
+|-----------|----------|
+| **Triệu chứng** | "PrismaClient is unable to run in this browser environment" |
+| **Nguyên nhân** | Prisma 7 bắt buộc dùng Driver Adapter |
+
+**Code fix - `src/server/db.ts`:**
 ```typescript
 import "dotenv/config";
 import { Pool } from "pg";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
 
-// Connection pool
-const connectionString = process.env.DATABASE_URL;
-
-if (!connectionString) {
-    throw new Error("DATABASE_URL is not set in .env");
-}
-
-const pool = new Pool({ connectionString });
-const adapter = new PrismaPg(pool);
-
-// Singleton pattern để tránh tạo nhiều instances trong development
-const globalForPrisma = globalThis as unknown as {
-    prisma: PrismaClient | undefined;
-};
-
-export const prisma = globalForPrisma.prisma ?? new PrismaClient({ adapter });
-
-if (process.env.NODE_ENV !== "production") {
-    globalForPrisma.prisma = prisma;
-}
-
-export default prisma;
-```
-
----
-
-### 1.4. Setup Shadcn UI
-
-```bash
-# Init Shadcn (auto-detect Next.js, TailwindCSS v4)
-npx shadcn@latest init -d
-
-# Cài components cơ bản
-npx shadcn@latest add button input form card dialog sheet dropdown-menu avatar badge separator table tabs textarea select scroll-area skeleton -y
-```
-
----
-
-### 1.5. Các file quan trọng đã tạo
-
-| File | Mô tả |
-|------|-------|
-| `prisma.config.ts` | Cấu hình Prisma 7 (datasource URL) |
-| `prisma/schema.prisma` | Database schema (models, enums) |
-| `prisma/seed.ts` | Script seed dữ liệu mẫu |
-| `src/server/db.ts` | Prisma Client Singleton với Driver Adapter |
-| `src/lib/utils.ts` | Utility `cn()` cho TailwindCSS |
-
----
-
-### 1.6. Test Connection
-
-Tạo file test để xác nhận kết nối:
-
-**File `src/test-prisma.js`:**
-```javascript
-require("dotenv").config();
-const { Pool } = require("pg");
-const { PrismaPg } = require("@prisma/adapter-pg");
-const { PrismaClient } = require("@prisma/client");
-
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
-
-async function main() {
-    await prisma.$connect();
-    console.log("✅ Connected!");
-    
-    const counts = await Promise.all([
-        prisma.user.count(),
-        prisma.project.count(),
-    ]);
-    console.log("Users:", counts[0], "| Projects:", counts[1]);
-}
-
-main()
-    .finally(() => prisma.$disconnect())
-    .finally(() => pool.end());
-```
-
-Chạy test:
-```bash
-node src/test-prisma.js
+export const prisma = new PrismaClient({ adapter });
 ```
 
 ---
 
-### 1.7. Verify Setup
+#### ❌ Lỗi 3: `datasource url is no longer allowed`
 
-```bash
-npm run build
-```
+| Thông tin | Chi tiết |
+|-----------|----------|
+| **Triệu chứng** | "The datasource property url is no longer allowed in schema.prisma" |
+| **Nguyên nhân** | Prisma 7 không cho phép `url` trong schema.prisma |
 
-Kết quả mong đợi:
-```
-✓ Compiled successfully
-✓ Generating static pages
-```
-
----
-
-### ✅ Checkpoint GĐ 1
-
-| Task | Status |
-|------|--------|
-| Project structure | ✅ Done |
-| Dependencies installed | ✅ Done |
-| Prisma 7 + Driver Adapter configured | ✅ Done |
-| Database connected (Supabase) | ✅ Done |
-| Seed data created | ✅ Done |
-| Shadcn UI (17 components) | ✅ Done |
-| `npm run build` passed | ✅ Done |
-
----
-
-### 🔧 Lệnh Prisma Thường Dùng
-
-| Lệnh | Mô tả |
-|------|-------|
-| `npx prisma generate` | Tạo Prisma Client từ schema |
-| `npx prisma db push` | Đẩy schema lên database (dev) |
-| `npx prisma migrate dev` | Tạo và apply migration (production) |
-| `npx prisma db seed` | Chạy seed data |
-| `npx prisma studio` | GUI xem database |
-| `npx prisma --version` | Xem version Prisma |
-
----
-
-### 🚨 Xử lý lỗi thường gặp
-
-#### ❌ Lỗi 1: `prisma db push` bị treo (timeout)
-
-**Triệu chứng:** 
-```
-Datasource "db": PostgreSQL database "postgres"...
-(lệnh treo không phản hồi)
-```
-
-**Nguyên nhân:** Dùng **port 6543 (pooler)** cho CLI commands. Pooler không ổn định cho schema operations.
-
-**Cách fix:** 
-1. Thêm `DIRECT_URL` với **port 5432** vào `.env`:
-   ```env
-   DIRECT_URL="postgres://...@...supabase.com:5432/postgres"
-   ```
-2. Cập nhật `prisma.config.ts`:
-   ```typescript
-   datasource: {
-       url: env("DIRECT_URL") || env("DATABASE_URL"),
-   },
-   ```
-
----
-
-#### ❌ Lỗi 2: `PrismaClientInitializationError`
-
-**Triệu chứng:**
-```
-PrismaClientInitializationError: `PrismaClient` is unable to run in this browser environment
-```
-
-**Nguyên nhân:** Prisma 7 **bắt buộc dùng Driver Adapter** cho relational databases.
-
-**Cách fix:**
-1. Cài driver adapter:
-   ```bash
-   npm install @prisma/adapter-pg pg
-   ```
-2. Khởi tạo PrismaClient với adapter:
-   ```typescript
-   import { Pool } from "pg";
-   import { PrismaPg } from "@prisma/adapter-pg";
-   import { PrismaClient } from "@prisma/client";
-
-   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-   const adapter = new PrismaPg(pool);
-   const prisma = new PrismaClient({ adapter });
-   ```
-
----
-
-#### ❌ Lỗi 3: `datasource url is no longer allowed in schema`
-
-**Triệu chứng:**
-```
-The datasource property `url` is no longer allowed in schema.prisma
-```
-
-**Nguyên nhân:** Prisma 7 không cho phép `url` trong `schema.prisma` nữa.
-
-**Cách fix:** Xóa dòng `url = env("DATABASE_URL")` trong datasource block:
+**Code fix - `prisma/schema.prisma`:**
 ```prisma
 datasource db {
   provider = "postgresql"
-  // KHÔNG có dòng url ở đây!
+  // KHÔNG có dòng url ở đây - URL nằm trong prisma.config.ts
 }
 ```
 
@@ -482,48 +238,40 @@ datasource db {
 
 #### ❌ Lỗi 4: `Can't reach database server`
 
-**Triệu chứng:**
-```
-Can't reach database server at `aws-0-ap-southeast-1.pooler.supabase.com`
-```
-
-**Nguyên nhân:** 
-- Supabase project bị **pause** (sau 7 ngày không hoạt động)
-- Kết nối internet có vấn đề
+| Thông tin | Chi tiết |
+|-----------|----------|
+| **Triệu chứng** | "Can't reach database server at aws-0-ap-southeast-1.pooler.supabase.com" |
+| **Nguyên nhân** | Supabase project bị pause sau 7 ngày không hoạt động |
 
 **Cách fix:**
 1. Vào https://supabase.com/dashboard
-2. Kiểm tra project có đang **Active** không
-3. Nếu bị pause → Click **"Resume project"**
+2. Kiểm tra project có đang Active không
+3. Nếu bị pause → Click "Resume project"
 
 ---
 
 #### ❌ Lỗi 5: `password authentication failed`
 
-**Triệu chứng:**
-```
-password authentication failed for user "postgres.xxx"
-```
+| Thông tin | Chi tiết |
+|-----------|----------|
+| **Triệu chứng** | "password authentication failed for user postgres.xxx" |
+| **Nguyên nhân** | Password trong connection string sai |
 
-**Nguyên nhân:** Password trong connection string sai.
-
-**Cách fix:** 
-1. Vào Supabase Dashboard → **Project Settings** → **Database**
-2. Click **"Reset database password"** để lấy password mới
-3. Cập nhật lại `.env`
+**Cách fix:**
+1. Vào Supabase Dashboard → Project Settings → Database
+2. Click "Reset database password"
+3. Cập nhật `.env` với password mới
 
 ---
 
 #### ❌ Lỗi 6: `prepared statement already exists`
 
-**Triệu chứng:**
-```
-prepared statement "s0" already exists
-```
+| Thông tin | Chi tiết |
+|-----------|----------|
+| **Triệu chứng** | 'prepared statement "s0" already exists' |
+| **Nguyên nhân** | Dùng pooler mà không có flag pgbouncer |
 
-**Nguyên nhân:** Dùng pooler connection mà không có flag `pgbouncer=true`.
-
-**Cách fix:** Thêm `?pgbouncer=true` vào cuối DATABASE_URL:
+**Code fix - `.env`:**
 ```env
 DATABASE_URL="postgres://...@...supabase.com:6543/postgres?pgbouncer=true"
 ```
@@ -532,11 +280,12 @@ DATABASE_URL="postgres://...@...supabase.com:6543/postgres?pgbouncer=true"
 
 #### ❌ Lỗi 7: Seed thất bại với `PrismaClientInitializationError`
 
-**Triệu chứng:** `npx prisma db seed` thất bại.
+| Thông tin | Chi tiết |
+|-----------|----------|
+| **Triệu chứng** | `npx prisma db seed` thất bại |
+| **Nguyên nhân** | File seed.ts chưa dùng Driver Adapter |
 
-**Nguyên nhân:** File `seed.ts` chưa dùng Driver Adapter.
-
-**Cách fix:** Cập nhật đầu file `prisma/seed.ts`:
+**Code fix - `prisma/seed.ts` (đầu file):**
 ```typescript
 import "dotenv/config";
 import { Pool } from "pg";
@@ -548,12 +297,12 @@ const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 ```
 
-Và cuối file thêm `pool.end()`:
+**Code fix - `prisma/seed.ts` (cuối file):**
 ```typescript
 main()
     .then(async () => {
         await prisma.$disconnect();
-        await pool.end();
+        await pool.end();  // QUAN TRỌNG: Đóng pool
     })
     .catch(async (e) => {
         console.error(e);
@@ -563,7 +312,9 @@ main()
     });
 ```
 
------
+---
+
+
 
 ## Giai đoạn 2: Xác thực & App Shell (Authentication & Layout)
 
@@ -589,367 +340,245 @@ npm install next-themes
 
 ---
 
-### 2.2. Cấu hình Auth.js v5 (Backend)
+### 2.2. Cấu hình Auth.js v5 (Backend) ✅
 
-#### Bước 1: Tạo file cấu hình Auth
-
-**File `src/lib/auth.ts`:**
-```typescript
-import NextAuth from "next-auth";
-import Credentials from "next-auth/providers/credentials";
-import Google from "next-auth/providers/google";
-import { PrismaAdapter } from "@auth/prisma-adapter";
-import bcrypt from "bcryptjs";
-import { prisma } from "@/server/db"; // Sử dụng Prisma Client singleton từ GĐ 1
-
-export const { handlers, auth, signIn, signOut } = NextAuth({
-    adapter: PrismaAdapter(prisma), // Prisma 7 compatible
-    session: { strategy: "jwt" },
-    pages: {
-        signIn: "/login",
-        error: "/login",
-    },
-    providers: [
-        Google({
-            clientId: process.env.GOOGLE_CLIENT_ID!,
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-        }),
-        Credentials({
-            name: "Credentials",
-            credentials: {
-                email: { label: "Email", type: "email" },
-                password: { label: "Password", type: "password" },
-            },
-            async authorize(credentials) {
-                if (!credentials?.email || !credentials?.password) {
-                    return null;
-                }
-
-                const user = await prisma.user.findUnique({
-                    where: { email: credentials.email as string },
-                });
-
-                if (!user || !user.password) {
-                    return null;
-                }
-
-                const isValid = await bcrypt.compare(
-                    credentials.password as string,
-                    user.password
-                );
-
-                if (!isValid) {
-                    return null;
-                }
-
-                return {
-                    id: user.id,
-                    email: user.email,
-                    name: user.name,
-                    role: user.role,
-                };
-            },
-        }),
-    ],
-    callbacks: {
-        async jwt({ token, user }) {
-            if (user) {
-                token.id = user.id;
-                token.role = (user as { role?: string }).role;
-            }
-            return token;
-        },
-        async session({ session, token }) {
-            if (token && session.user) {
-                session.user.id = token.id as string;
-                session.user.role = token.role as string;
-            }
-            return session;
-        },
-    },
-});
-```
-
-> [!NOTE]
-> **Giải thích cấu hình:**
-> - `PrismaAdapter(prisma)`: Nhận Prisma Client từ `src/server/db.ts` đã được khởi tạo với Driver Adapter
-> - `session: { strategy: "jwt" }`: Dùng JWT thay vì database sessions (nhanh hơn)
-> - `callbacks`: Thêm `id` và `role` vào session để kiểm tra quyền
+> [!IMPORTANT]
+> **ĐÃ HOÀN THÀNH** - Tất cả file chứa comments chi tiết bằng tiếng Việt giải thích từng phần.
 
 ---
 
-#### Bước 2: Tạo API Route
+#### 📁 File 1: Cấu hình Auth chính
 
-**File `src/app/api/auth/[...nextauth]/route.ts`:**
+| Thông tin | Chi tiết |
+|-----------|----------|
+| **File** | `src/lib/auth.ts` |
+| **Mục đích** | Cấu hình toàn bộ hệ thống xác thực |
+| **Exports** | `handlers`, `auth`, `signIn`, `signOut` |
+
+**Tính năng đã cài đặt:**
+- ✅ **Credentials Provider** - Đăng nhập email/password với bcrypt hash
+- ✅ **Google OAuth Provider** - Đăng nhập bằng Google
+- ✅ **PrismaAdapter** - Lưu users/accounts vào database (tương thích Prisma 7)
+- ✅ **JWT Strategy** - Nhanh hơn database sessions
+- ✅ **Callbacks** - Thêm `id`, `role`, `departmentId` vào session
+- ✅ **Kiểm tra user status** - Chặn login nếu LOCKED/INACTIVE
+
+**Cách sử dụng:**
 ```typescript
-import { handlers } from "@/lib/auth";
-
-export const { GET, POST } = handlers;
-```
-
----
-
-#### Bước 3: Mở rộng TypeScript types
-
-**File `src/types/next-auth.d.ts`:**
-```typescript
-import "next-auth";
-
-declare module "next-auth" {
-    interface User {
-        id: string;
-        role?: string;
-    }
-
-    interface Session {
-        user: {
-            id: string;
-            email: string;
-            name?: string | null;
-            role?: string;
-        };
-    }
-}
-
-declare module "next-auth/jwt" {
-    interface JWT {
-        id?: string;
-        role?: string;
-    }
-}
-```
-
----
-
-#### Bước 4: Tạo Middleware bảo vệ route
-
-**File `middleware.ts` (root folder):**
-```typescript
+// Server Component
 import { auth } from "@/lib/auth";
-import { NextResponse } from "next/server";
+const session = await auth();
 
-export default auth((req) => {
-    const { nextUrl } = req;
-    const isLoggedIn = !!req.auth;
-
-    // Những route cần login
-    const protectedRoutes = ["/dashboard", "/projects", "/admin"];
-    const isProtectedRoute = protectedRoutes.some((route) =>
-        nextUrl.pathname.startsWith(route)
-    );
-
-    // Redirect về login nếu chưa đăng nhập
-    if (isProtectedRoute && !isLoggedIn) {
-        return NextResponse.redirect(new URL("/login", nextUrl));
-    }
-
-    // Redirect về dashboard nếu đã login mà vào trang login
-    if (isLoggedIn && nextUrl.pathname === "/login") {
-        return NextResponse.redirect(new URL("/dashboard", nextUrl));
-    }
-
-    return NextResponse.next();
-});
-
-export const config = {
-    matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
-};
+// Server Action  
+import { signIn, signOut } from "@/lib/auth";
+await signIn("credentials", { email, password });
 ```
 
 ---
 
-#### Bước 5: Cập nhật `.env`
+#### 📁 File 2: API Route
 
-Thêm các biến môi trường cho Google OAuth:
+| Thông tin | Chi tiết |
+|-----------|----------|
+| **File** | `src/app/api/auth/[...nextauth]/route.ts` |
+| **Mục đích** | Tạo API endpoints cho Auth.js |
+
+**Endpoints được tạo:**
+- `POST /api/auth/signin` - Xử lý đăng nhập
+- `POST /api/auth/signout` - Xử lý đăng xuất
+- `GET /api/auth/session` - Lấy session hiện tại
+- `GET /api/auth/callback/:provider` - OAuth callback
+
+---
+
+#### 📁 File 3: TypeScript Type Declarations
+
+| Thông tin | Chi tiết |
+|-----------|----------|
+| **File** | `src/types/next-auth.d.ts` |
+| **Mục đích** | Mở rộng types của Auth.js để có type safety |
+
+**Ý nghĩa:**
+- Cho phép truy cập `session.user.role` và `session.user.departmentId` mà không bị TypeScript báo lỗi
+- Định nghĩa enum cho roles: `"ADMIN" | "PM" | "MEMBER" | "VIEWER"`
+
+---
+
+#### 📁 File 4: Middleware bảo vệ route
+
+| Thông tin | Chi tiết |
+|-----------|----------|
+| **File** | `middleware.ts` (root folder) |
+| **Mục đích** | Kiểm tra authentication trước mỗi request |
+
+**Logic bảo vệ:**
+
+| Loại Route | Paths | Quyền truy cập |
+|------------|-------|----------------|
+| **Public** | `/`, `/login`, `/register`, `/forgot-password` | Mọi người đều xem được |
+| **Protected** | `/dashboard`, `/projects`, `/tasks`, `/calendar`, `/reports`, `/settings`, `/profile` | Phải đăng nhập |
+| **Admin Only** | `/admin/*` | Chỉ role ADMIN |
+| **Auth Routes** | `/login`, `/register` | Redirect về dashboard nếu đã login |
+
+---
+
+#### ⚙️ Bước 5: Cập nhật `.env` (BẮT BUỘC)
+
+> [!CAUTION]
+> **Thiếu `AUTH_SECRET` sẽ gây lỗi `error=Configuration`**
+
+**Thêm vào file `.env`:**
 ```env
-# ===========================================
-# AUTHENTICATION (Auth.js v5)
-# ===========================================
-AUTH_SECRET="your-random-secret-key-32-chars-min"
+# BẮT BUỘC
+AUTH_SECRET="your-secret-key-at-least-32-characters"
 AUTH_URL="http://localhost:3000"
 
-# Google OAuth (optional - bỏ qua nếu chỉ dùng Credentials)
+# OPTIONAL (nếu dùng Google OAuth)
 GOOGLE_CLIENT_ID="your-google-client-id"
 GOOGLE_CLIENT_SECRET="your-google-client-secret"
 ```
 
-> 💡 **Tạo Google OAuth credentials:**
-> 1. Vào https://console.cloud.google.com/apis/credentials
-> 2. Tạo OAuth 2.0 Client IDs
-> 3. Thêm Authorized redirect URI: `http://localhost:3000/api/auth/callback/google`
+**Cách tạo `AUTH_SECRET`:**
+
+| Cách | Độ an toàn | Lệnh/Hướng dẫn |
+|------|------------|----------------|
+| **Node.js** | ⭐⭐⭐⭐ | `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"` |
+| **Website** | ⭐⭐⭐ | https://generate-secret.vercel.app/32 |
+| **Tự nghĩ** | ⭐⭐ | Bất kỳ chuỗi nào đủ 32 ký tự |
+
+**Ví dụ chạy lệnh Node.js:**
+```powershell
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+# Output: Tk/6tyZwEWv4mMwk9N4botsKGfqRJ9fsjmopVvlQLnU=
+```
+
+> [!TIP]
+> Copy output và paste vào `AUTH_SECRET` trong file `.env`
+
+---
+
+#### 📁 File 5 & 6: Trang Login và Dashboard Test
+
+| File | Mục đích |
+|------|----------|
+| `src/app/login/page.tsx` | Form đăng nhập với UI đẹp, hiển thị tài khoản test |
+| `src/app/dashboard/page.tsx` | Hiển thị session info, test route protection |
+
+---
+
+#### ✅ Kết quả đạt được
+
+**Tài khoản test (từ seed data):**
+
+| Role | Email | Password |
+|------|-------|----------|
+| Admin | `admin@novawork.local` | `Password@123` |
+| PM | `pm@novawork.local` | `Password@123` |
+| Member | `member1@novawork.local` | `Password@123` |
+
+**Cách test:**
+1. Đảm bảo `.env` có `AUTH_SECRET`
+2. Chạy `npm run dev`
+3. Truy cập http://localhost:3000/login
+4. Đăng nhập → redirect về `/dashboard`
+5. Dashboard hiển thị: `id`, `email`, `name`, `role`
+
+---
+
+#### 🚨 Xử lý lỗi thường gặp
+
+| Lỗi | Nguyên nhân | Cách fix |
+|-----|-------------|----------|
+| `error=Configuration` | Thiếu `AUTH_SECRET` trong `.env` | Thêm `AUTH_SECRET` và restart server |
+| `Email/password không đúng` | Chưa seed data hoặc password sai | Chạy `npx prisma db seed` |
+| TypeScript lỗi Adapter | Version mismatch | Dùng `as any` type assertion |
 
 ---
 
 ### 2.3. Global Providers
 
-#### Bước 1: Tạo Providers Wrapper
+> [!NOTE]
+> **CHƯA THỰC HIỆN** - Cần làm để sử dụng `useSession()` trong Client Components
 
-**File `src/providers/app-provider.tsx`:**
-```tsx
-"use client";
+| File | Mục đích |
+|------|----------|
+| `src/providers/app-provider.tsx` | Wrapper cho SessionProvider, QueryClient, ThemeProvider |
+| `src/app/layout.tsx` | Cập nhật để wrap app với AppProvider |
 
-import { SessionProvider } from "next-auth/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ThemeProvider } from "next-themes";
-import { Toaster } from "sonner";
-import { useState } from "react";
+**Ý nghĩa:**
+- **SessionProvider** - Cho phép dùng `useSession()` hook trong Client Components
+- **QueryClientProvider** - React Query cho data fetching
+- **ThemeProvider** - Chuyển đổi dark/light mode
+- **Toaster** - Hiển thị toast notifications
 
-export function AppProvider({ children }: { children: React.ReactNode }) {
-    const [queryClient] = useState(
-        () =>
-            new QueryClient({
-                defaultOptions: {
-                    queries: {
-                        staleTime: 60 * 1000, // 1 minute
-                    },
-                },
-            })
-    );
+---
 
-    return (
-        <SessionProvider>
-            <QueryClientProvider client={queryClient}>
-                <ThemeProvider
-                    attribute="class"
-                    defaultTheme="system"
-                    enableSystem
-                    disableTransitionOnChange
-                >
-                    {children}
-                    <Toaster richColors position="bottom-right" />
-                </ThemeProvider>
-            </QueryClientProvider>
-        </SessionProvider>
-    );
-}
+### 2.4. Trang Login ✅
+
+> [!IMPORTANT]
+> **ĐÃ HOÀN THÀNH**
+
+| Thông tin | Chi tiết |
+|-----------|----------|
+| **File** | `src/app/login/page.tsx` |
+| **Loại** | Client Component (`"use client"`) |
+
+**Tính năng:**
+- ✅ Form nhập email/password
+- ✅ Nút đăng nhập Google OAuth
+- ✅ Xử lý lỗi với thông báo rõ ràng
+- ✅ Hiển thị thông tin tài khoản test
+- ✅ Giao diện dark mode đẹp mắt
+- ✅ Redirect về `callbackUrl` sau khi login
+
+---
+
+### 2.4.1. Trang Dashboard Test ✅
+
+> [!IMPORTANT]
+> **ĐÃ HOÀN THÀNH**
+
+| Thông tin | Chi tiết |
+|-----------|----------|
+| **File** | `src/app/dashboard/page.tsx` |
+| **Loại** | Server Component (async) |
+
+**Tính năng:**
+- ✅ Hiển thị thông tin session (id, email, name, role)
+- ✅ Raw JSON của session object
+- ✅ Các link test route protection
+- ✅ Nút đăng xuất (Server Action)
+
+**Cách lấy session trong Server Component:**
+```typescript
+import { auth } from "@/lib/auth";
+const session = await auth();
 ```
 
 ---
 
-#### Bước 2: Cập nhật Root Layout
+### 2.4.2. Landing Page (Homepage) ✅
 
-**File `src/app/layout.tsx`:**
-```tsx
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import "./globals.css";
-import { AppProvider } from "@/providers/app-provider";
+> [!IMPORTANT]
+> **ĐÃ HOÀN THÀNH**
 
-const inter = Inter({ subsets: ["latin"] });
+| Thông tin | Chi tiết |
+|-----------|----------|
+| **File** | `src/app/page.tsx` |
+| **Loại** | Server Component (async) |
+| **URL** | `/` (homepage) |
 
-export const metadata: Metadata = {
-    title: "NovaWork Hub",
-    description: "Quản lý công việc hiệu quả",
-};
+**Tính năng:**
+- ✅ Giao diện dark mode đẹp mắt
+- ✅ Hiển thị tên app và mô tả
+- ✅ Kiểm tra trạng thái đăng nhập
+- ✅ **Chưa login:** Hiển thị nút "Đăng nhập" + "Đăng ký"
+- ✅ **Đã login:** Hiển thị nút "Vào Dashboard" + tên user
+- ✅ Hiển thị features của app (Quản lý Dự án, Task, Cộng tác)
 
-export default function RootLayout({
-    children,
-}: {
-    children: React.ReactNode;
-}) {
-    return (
-        <html lang="vi" suppressHydrationWarning>
-            <body className={inter.className}>
-                <AppProvider>{children}</AppProvider>
-            </body>
-        </html>
-    );
-}
-```
-
----
-
-### 2.4. Trang Login
-
-**File `src/app/login/page.tsx`:**
-```tsx
-"use client";
-
-import { useState } from "react";
-import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { toast } from "sonner";
-
-export default function LoginPage() {
-    const router = useRouter();
-    const [loading, setLoading] = useState(false);
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setLoading(true);
-
-        const result = await signIn("credentials", {
-            email,
-            password,
-            redirect: false,
-        });
-
-        if (result?.error) {
-            toast.error("Email hoặc mật khẩu không đúng!");
-        } else {
-            toast.success("Đăng nhập thành công!");
-            router.push("/dashboard");
-        }
-
-        setLoading(false);
-    };
-
-    return (
-        <div className="min-h-screen flex items-center justify-center bg-background">
-            <Card className="w-full max-w-md">
-                <CardHeader>
-                    <CardTitle className="text-center">NovaWork Hub</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        <Input
-                            type="email"
-                            placeholder="Email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            required
-                        />
-                        <Input
-                            type="password"
-                            placeholder="Mật khẩu"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                        />
-                        <Button type="submit" className="w-full" disabled={loading}>
-                            {loading ? "Đang đăng nhập..." : "Đăng nhập"}
-                        </Button>
-                    </form>
-
-                    <div className="relative">
-                        <div className="absolute inset-0 flex items-center">
-                            <span className="w-full border-t" />
-                        </div>
-                        <div className="relative flex justify-center text-xs uppercase">
-                            <span className="bg-background px-2 text-muted-foreground">
-                                Hoặc
-                            </span>
-                        </div>
-                    </div>
-
-                    <Button
-                        variant="outline"
-                        className="w-full"
-                        onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
-                    >
-                        Đăng nhập với Google
-                    </Button>
-                </CardContent>
-            </Card>
-        </div>
-    );
-}
-```
+**Lưu ý về Route:**
+- Trang `/` nằm trong `publicRoutes` của middleware → **Không yêu cầu đăng nhập**
+- User chưa login vẫn xem được homepage
 
 ---
 
