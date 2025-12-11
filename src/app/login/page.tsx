@@ -14,19 +14,47 @@
  * 4. Nếu thành công → redirect về callbackUrl hoặc /dashboard
  * 5. Nếu thất bại → hiển thị error message
  * 
+ * LƯU Ý: useSearchParams() cần được wrap trong Suspense boundary
+ * để Next.js có thể static render trang này.
+ * 
  * ============================================================================
  */
 
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
-export default function LoginPage() {
+/**
+ * Loading skeleton cho form login
+ */
+function LoginFormSkeleton() {
+    return (
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-4">
+            <Card className="w-full max-w-md bg-white/80 backdrop-blur-sm border-slate-200 shadow-xl shadow-slate-200/50">
+                <CardHeader className="text-center">
+                    <div className="h-8 w-48 mx-auto bg-slate-200 rounded animate-pulse" />
+                    <div className="h-4 w-32 mx-auto bg-slate-100 rounded animate-pulse mt-2" />
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="h-10 bg-slate-100 rounded animate-pulse" />
+                    <div className="h-10 bg-slate-100 rounded animate-pulse" />
+                    <div className="h-10 bg-slate-200 rounded animate-pulse" />
+                </CardContent>
+            </Card>
+        </div>
+    );
+}
+
+/**
+ * Component chính chứa logic login
+ * Được tách riêng để có thể wrap trong Suspense
+ */
+function LoginForm() {
     // =========================================================================
     // STATE MANAGEMENT
     // =========================================================================
@@ -60,6 +88,8 @@ export default function LoginPage() {
      * SearchParams - lấy callbackUrl và error từ URL
      * - callbackUrl: Trang redirect sau khi login thành công
      * - error: Error code từ Auth.js
+     * 
+     * LƯU Ý: Hook này cần Suspense boundary ở parent component
      */
     const searchParams = useSearchParams();
     const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
@@ -288,3 +318,16 @@ export default function LoginPage() {
         </div>
     );
 }
+
+/**
+ * Export default LoginPage
+ * Wrap LoginForm trong Suspense để NextJS có thể static render
+ */
+export default function LoginPage() {
+    return (
+        <Suspense fallback={<LoginFormSkeleton />}>
+            <LoginForm />
+        </Suspense>
+    );
+}
+

@@ -495,21 +495,69 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 
 ---
 
-### 2.3. Global Providers
+### 2.3. Global Providers ✅
 
-> [!NOTE]
-> **CHƯA THỰC HIỆN** - Cần làm để sử dụng `useSession()` trong Client Components
+> [!IMPORTANT]
+> **ĐÃ HOÀN THÀNH** - Cho phép sử dụng `useSession()` trong Client Components
 
-| File | Mục đích |
-|------|----------|
-| `src/providers/app-provider.tsx` | Wrapper cho SessionProvider, QueryClient, ThemeProvider |
-| `src/app/layout.tsx` | Cập nhật để wrap app với AppProvider |
+---
 
-**Ý nghĩa:**
-- **SessionProvider** - Cho phép dùng `useSession()` hook trong Client Components
-- **QueryClientProvider** - React Query cho data fetching
-- **ThemeProvider** - Chuyển đổi dark/light mode
-- **Toaster** - Hiển thị toast notifications
+#### 📁 File 1: AppProvider Wrapper
+
+| Thông tin | Chi tiết |
+|-----------|----------|
+| **File** | `src/providers/app-provider.tsx` |
+| **Loại** | Client Component (`"use client"`) |
+| **Mục đích** | Wrap toàn bộ app với các providers cần thiết |
+
+**Providers được cài đặt:**
+
+| Provider | Package | Mục đích |
+|----------|---------|----------|
+| `SessionProvider` | `next-auth/react` | Cho phép dùng `useSession()` hook trong Client Components |
+| `ThemeProvider` | `next-themes` | Chuyển đổi dark/light mode, lưu preference vào localStorage |
+| `Toaster` | `sonner` | Hiển thị toast notifications |
+
+---
+
+#### 📁 File 2: Root Layout
+
+| Thông tin | Chi tiết |
+|-----------|----------|
+| **File** | `src/app/layout.tsx` |
+| **Thay đổi** | Wrap `{children}` với `<AppProvider>` |
+
+**Lưu ý quan trọng:**
+- `suppressHydrationWarning` trong `<html>` tag: Cần thiết cho `next-themes` để tránh hydration mismatch
+
+---
+
+#### 📁 File 3: Sonner Toaster Component
+
+| Thông tin | Chi tiết |
+|-----------|----------|
+| **File** | `src/components/ui/sonner.tsx` |
+| **Nguồn** | Shadcn UI (`npx shadcn@latest add sonner`) |
+
+**Cách sử dụng toast:**
+```tsx
+import { toast } from "sonner";
+
+// Các loại toast
+toast.success("Thành công!");
+toast.error("Có lỗi xảy ra");
+toast.info("Thông tin");
+toast.warning("Cảnh báo");
+```
+
+---
+
+#### ✅ Kết quả đạt được
+
+- ✅ `useSession()` hoạt động trong Client Components (Sidebar, Header)
+- ✅ Dark/Light mode switching với `next-themes`
+- ✅ Toast notifications với Sonner
+- ✅ `npm run build` passed
 
 ---
 
