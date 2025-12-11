@@ -20,20 +20,20 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 /**
- * Hàm helper để lấy màu theo role
+ * Hàm helper để lấy màu theo role (Light Theme)
  */
 function getRoleBadgeColor(role: string) {
     switch (role) {
         case "ADMIN":
-            return "bg-red-500/20 text-red-400 border-red-500/50";
+            return "bg-red-100 text-red-700 border-red-300";
         case "PM":
-            return "bg-blue-500/20 text-blue-400 border-blue-500/50";
+            return "bg-blue-100 text-blue-700 border-blue-300";
         case "MEMBER":
-            return "bg-green-500/20 text-green-400 border-green-500/50";
+            return "bg-emerald-100 text-emerald-700 border-emerald-300";
         case "VIEWER":
-            return "bg-slate-500/20 text-slate-400 border-slate-500/50";
+            return "bg-slate-100 text-slate-600 border-slate-300";
         default:
-            return "bg-slate-500/20 text-slate-400 border-slate-500/50";
+            return "bg-slate-100 text-slate-600 border-slate-300";
     }
 }
 
@@ -60,21 +60,21 @@ export default async function DashboardPage() {
     }
 
     // =========================================================================
-    // RENDER
+    // RENDER - LIGHT THEME
     // =========================================================================
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-8">
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-8">
             <div className="max-w-4xl mx-auto space-y-6">
                 {/* ============================================= */}
                 {/* HEADER */}
                 {/* ============================================= */}
                 <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-3xl font-bold text-white">
+                        <h1 className="text-3xl font-bold text-slate-800">
                             🎉 Chào mừng, {session.user.name || "User"}!
                         </h1>
-                        <p className="text-slate-400 mt-1">
+                        <p className="text-slate-500 mt-1">
                             Bạn đã đăng nhập thành công vào NovaWork Hub
                         </p>
                     </div>
@@ -89,7 +89,7 @@ export default async function DashboardPage() {
                         <Button
                             type="submit"
                             variant="outline"
-                            className="border-slate-600 text-slate-300 hover:bg-slate-700/50"
+                            className="border-slate-300 text-slate-600 hover:bg-slate-100 hover:border-slate-400 transition-colors"
                         >
                             Đăng xuất
                         </Button>
@@ -99,12 +99,12 @@ export default async function DashboardPage() {
                 {/* ============================================= */}
                 {/* SESSION INFO CARD */}
                 {/* ============================================= */}
-                <Card className="bg-slate-800/50 border-slate-700">
+                <Card className="bg-white/80 backdrop-blur-sm border-slate-200 shadow-lg shadow-slate-200/50">
                     <CardHeader>
-                        <CardTitle className="text-white flex items-center gap-2">
+                        <CardTitle className="text-slate-800 flex items-center gap-2">
                             ✅ Authentication Test - Thành công!
                         </CardTitle>
-                        <CardDescription className="text-slate-400">
+                        <CardDescription className="text-slate-500">
                             Dưới đây là thông tin session hiện tại
                         </CardDescription>
                     </CardHeader>
@@ -113,34 +113,34 @@ export default async function DashboardPage() {
                         {/* User Info */}
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-1">
-                                <label className="text-xs text-slate-500 uppercase tracking-wider">
+                                <label className="text-xs text-slate-500 uppercase tracking-wider font-medium">
                                     User ID
                                 </label>
-                                <p className="text-sm text-slate-300 font-mono bg-slate-700/50 p-2 rounded">
+                                <p className="text-sm text-slate-700 font-mono bg-slate-100 p-2 rounded-lg border border-slate-200">
                                     {session.user.id}
                                 </p>
                             </div>
 
                             <div className="space-y-1">
-                                <label className="text-xs text-slate-500 uppercase tracking-wider">
+                                <label className="text-xs text-slate-500 uppercase tracking-wider font-medium">
                                     Email
                                 </label>
-                                <p className="text-sm text-slate-300 font-mono bg-slate-700/50 p-2 rounded">
+                                <p className="text-sm text-slate-700 font-mono bg-slate-100 p-2 rounded-lg border border-slate-200">
                                     {session.user.email}
                                 </p>
                             </div>
 
                             <div className="space-y-1">
-                                <label className="text-xs text-slate-500 uppercase tracking-wider">
+                                <label className="text-xs text-slate-500 uppercase tracking-wider font-medium">
                                     Name
                                 </label>
-                                <p className="text-sm text-slate-300 font-mono bg-slate-700/50 p-2 rounded">
+                                <p className="text-sm text-slate-700 font-mono bg-slate-100 p-2 rounded-lg border border-slate-200">
                                     {session.user.name || "N/A"}
                                 </p>
                             </div>
 
                             <div className="space-y-1">
-                                <label className="text-xs text-slate-500 uppercase tracking-wider">
+                                <label className="text-xs text-slate-500 uppercase tracking-wider font-medium">
                                     Role
                                 </label>
                                 <div className="p-2">
@@ -153,10 +153,10 @@ export default async function DashboardPage() {
 
                         {/* Raw Session Object */}
                         <div className="space-y-2">
-                            <label className="text-xs text-slate-500 uppercase tracking-wider">
+                            <label className="text-xs text-slate-500 uppercase tracking-wider font-medium">
                                 Raw Session Object (JSON)
                             </label>
-                            <pre className="text-xs text-slate-300 font-mono bg-slate-900/50 p-4 rounded overflow-auto max-h-48">
+                            <pre className="text-xs text-slate-600 font-mono bg-slate-50 border border-slate-200 p-4 rounded-lg overflow-auto max-h-48">
                                 {JSON.stringify(session, null, 2)}
                             </pre>
                         </div>
@@ -166,12 +166,12 @@ export default async function DashboardPage() {
                 {/* ============================================= */}
                 {/* TEST ROUTES CARD */}
                 {/* ============================================= */}
-                <Card className="bg-slate-800/50 border-slate-700">
+                <Card className="bg-white/80 backdrop-blur-sm border-slate-200 shadow-lg shadow-slate-200/50">
                     <CardHeader>
-                        <CardTitle className="text-white">
+                        <CardTitle className="text-slate-800">
                             🧪 Test Routes
                         </CardTitle>
-                        <CardDescription className="text-slate-400">
+                        <CardDescription className="text-slate-500">
                             Click các link dưới để test middleware protection
                         </CardDescription>
                     </CardHeader>
@@ -180,34 +180,34 @@ export default async function DashboardPage() {
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                             <a
                                 href="/dashboard"
-                                className="p-3 bg-green-500/20 border border-green-500/50 rounded-md text-center hover:bg-green-500/30 transition"
+                                className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-center hover:bg-emerald-100 hover:border-emerald-300 transition-all duration-200 hover:shadow-md"
                             >
-                                <p className="text-green-400 font-medium">/dashboard</p>
-                                <p className="text-xs text-green-400/70">Protected ✓</p>
+                                <p className="text-emerald-700 font-medium">/dashboard</p>
+                                <p className="text-xs text-emerald-600/70">Protected ✓</p>
                             </a>
 
                             <a
                                 href="/projects"
-                                className="p-3 bg-green-500/20 border border-green-500/50 rounded-md text-center hover:bg-green-500/30 transition"
+                                className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-center hover:bg-emerald-100 hover:border-emerald-300 transition-all duration-200 hover:shadow-md"
                             >
-                                <p className="text-green-400 font-medium">/projects</p>
-                                <p className="text-xs text-green-400/70">Protected ✓</p>
+                                <p className="text-emerald-700 font-medium">/projects</p>
+                                <p className="text-xs text-emerald-600/70">Protected ✓</p>
                             </a>
 
                             <a
                                 href="/admin"
-                                className="p-3 bg-red-500/20 border border-red-500/50 rounded-md text-center hover:bg-red-500/30 transition"
+                                className="p-3 bg-red-50 border border-red-200 rounded-lg text-center hover:bg-red-100 hover:border-red-300 transition-all duration-200 hover:shadow-md"
                             >
-                                <p className="text-red-400 font-medium">/admin</p>
-                                <p className="text-xs text-red-400/70">Admin Only</p>
+                                <p className="text-red-700 font-medium">/admin</p>
+                                <p className="text-xs text-red-600/70">Admin Only</p>
                             </a>
 
                             <a
                                 href="/login"
-                                className="p-3 bg-slate-500/20 border border-slate-500/50 rounded-md text-center hover:bg-slate-500/30 transition"
+                                className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-center hover:bg-slate-100 hover:border-slate-300 transition-all duration-200 hover:shadow-md"
                             >
-                                <p className="text-slate-400 font-medium">/login</p>
-                                <p className="text-xs text-slate-400/70">Public</p>
+                                <p className="text-slate-700 font-medium">/login</p>
+                                <p className="text-xs text-slate-500">Public</p>
                             </a>
                         </div>
                     </CardContent>
@@ -216,33 +216,33 @@ export default async function DashboardPage() {
                 {/* ============================================= */}
                 {/* NEXT STEPS */}
                 {/* ============================================= */}
-                <Card className="bg-slate-800/50 border-slate-700">
+                <Card className="bg-white/80 backdrop-blur-sm border-slate-200 shadow-lg shadow-slate-200/50">
                     <CardHeader>
-                        <CardTitle className="text-white">
+                        <CardTitle className="text-slate-800">
                             📋 Các bước tiếp theo
                         </CardTitle>
                     </CardHeader>
 
                     <CardContent>
-                        <ul className="space-y-2 text-sm text-slate-300">
+                        <ul className="space-y-2 text-sm text-slate-600">
                             <li className="flex items-center gap-2">
-                                <span className="text-green-400">✓</span>
+                                <span className="text-emerald-500 font-bold">✓</span>
                                 Authentication đang hoạt động
                             </li>
                             <li className="flex items-center gap-2">
-                                <span className="text-green-400">✓</span>
+                                <span className="text-emerald-500 font-bold">✓</span>
                                 Session chứa đầy đủ thông tin (id, email, role)
                             </li>
                             <li className="flex items-center gap-2">
-                                <span className="text-green-400">✓</span>
+                                <span className="text-emerald-500 font-bold">✓</span>
                                 Middleware bảo vệ protected routes
                             </li>
                             <li className="flex items-center gap-2">
-                                <span className="text-yellow-400">→</span>
+                                <span className="text-amber-500 font-bold">→</span>
                                 Tiếp tục với bước 2.3: App Shell Layout (Sidebar, Header)
                             </li>
                             <li className="flex items-center gap-2">
-                                <span className="text-yellow-400">→</span>
+                                <span className="text-amber-500 font-bold">→</span>
                                 Tiếp tục với bước 2.4: SessionProvider cho Client Components
                             </li>
                         </ul>
