@@ -26,12 +26,15 @@ import {
     FileText,
     Tag,
     MessageSquare,
+    Paperclip,
 } from "lucide-react";
 
 import {
     Sheet,
     SheetContent,
     SheetHeader,
+    SheetTitle,
+    SheetDescription,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -62,6 +65,9 @@ import type { TaskListItem } from "@/server/services/task.service";
 import type { CommentListItem } from "@/server/services/comment.service";
 import type { Priority, TaskStatus } from "@prisma/client";
 import { TaskCommentSection } from "./task-comment-section";
+import { FileUpload, AttachmentItem, type UploadedFile } from "./file-upload";
+import { createAttachment, deleteAttachment } from "@/actions/attachment";
+import type { AttachmentListItem } from "@/server/services/attachment.service";
 
 // ============================================
 // TYPES
@@ -80,9 +86,11 @@ interface TaskDetailSheetProps {
     onOpenChange: (open: boolean) => void;
     assignees: AssigneeOption[];
     comments?: CommentListItem[];
+    attachments?: AttachmentListItem[];
     currentUserId?: string;
     currentUserRole?: string;
     onCommentsRefresh?: () => void;
+    onAttachmentsRefresh?: () => void;
     onUpdated?: () => void;
     onDeleted?: () => void;
 }
@@ -131,9 +139,11 @@ export function TaskDetailSheet({
     onOpenChange,
     assignees,
     comments = [],
+    attachments = [],
     currentUserId,
     currentUserRole,
     onCommentsRefresh,
+    onAttachmentsRefresh,
     onUpdated,
     onDeleted,
 }: TaskDetailSheetProps) {
@@ -237,6 +247,46 @@ export function TaskDetailSheet({
         }
     };
 
+    // Handle file upload complete
+    const handleUploadComplete = async (uploadedFile: UploadedFile) => {
+        if (!task) return;
+
+        try {
+            const result = await createAttachment({
+                fileName: uploadedFile.fileName,
+                fileUrl: uploadedFile.fileUrl,
+                fileKey: uploadedFile.fileKey,
+                fileType: uploadedFile.fileType,
+                fileSize: uploadedFile.fileSize,
+                taskId: task.id,
+            });
+
+            if (result.success) {
+                toast.success("Đã đính kèm file");
+                onAttachmentsRefresh?.();
+            } else {
+                toast.error(result.error);
+            }
+        } catch (error) {
+            toast.error("Lỗi khi lưu attachment");
+        }
+    };
+
+    // Handle delete attachment
+    const handleDeleteAttachment = async (attachmentId: string) => {
+        try {
+            const result = await deleteAttachment(attachmentId);
+            if (result.success) {
+                toast.success("Đã xóa file");
+                onAttachmentsRefresh?.();
+            } else {
+                toast.error(result.error);
+            }
+        } catch (error) {
+            toast.error("Lỗi khi xóa attachment");
+        }
+    };
+
     if (!task) return null;
 
     const selectedAssignee = assignees.find((a) => a.id === assigneeId);
@@ -249,6 +299,14 @@ export function TaskDetailSheet({
             <SheetContent className="w-full sm:max-w-[600px] overflow-y-auto p-0">
                 {/* Header with gradient background */}
                 <SheetHeader className="px-6 pt-6 pb-4 bg-gradient-to-b from-muted/50 to-background border-b space-y-4">
+                    {/* Accessibility requirements */}
+                    <div className="sr-only">
+                        <SheetTitle>Chi tiết công việc: {title}</SheetTitle>
+                        <SheetDescription>
+                            Xem và chỉnh sửa thông tin chi tiết của công việc
+                        </SheetDescription>
+                    </div>
+
                     {/* Status and Type Row */}
                     <div className="flex items-center gap-2 flex-wrap">
                         <Badge variant="outline" className={cn("capitalize font-medium", selectedType?.color)}>
@@ -492,6 +550,36 @@ export function TaskDetailSheet({
                             placeholder="Thêm mô tả chi tiết cho task..."
                             className="min-h-[150px] resize-none"
                         />
+                    </div>
+
+                    <Separator />
+
+                    {/* Attachments Section */}
+                    <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                            <Paperclip className="h-4 w-4 text-muted-foreground" />
+                            <Label className="text-sm font-semibold">File đính kèm</Label>
+                        </div>
+
+                        {/* Upload Area */}
+                        <FileUpload onUploadComplete={handleUploadComplete} />
+
+                        {/* Attachment List */}
+                        {attachments.length > 0 && (
+                            <div className="space-y-2">
+                                {attachments.map((attachment) => (
+                                    <AttachmentItem
+                                        key={attachment.id}
+                                        attachment={attachment}
+                                        onDelete={handleDeleteAttachment}
+                                        canDelete={
+                                            currentUserId === attachment.uploaderId ||
+                                            currentUserRole === 'ADMIN'
+                                        }
+                                    />
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     <Separator />

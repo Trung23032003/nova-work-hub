@@ -16,3 +16,6 @@ export { TaskCard } from "./task-card";
 export { TaskDetailSheet } from "./task-detail-sheet";
 export { TaskChecklist } from "./task-checklist";
 export { TaskCommentSection } from "./task-comment-section";
+
+// File Upload
+export { FileUpload, AttachmentItem } from "./file-upload";

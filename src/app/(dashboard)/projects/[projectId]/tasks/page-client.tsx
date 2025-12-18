@@ -30,6 +30,8 @@ import type { TaskFiltersValue } from "@/components/features/tasks/task-filters"
 import type { TaskListItem } from "@/server/services/task.service";
 import type { CommentListItem } from "@/server/services/comment.service";
 import { getTaskComments } from "@/actions/comment";
+import { getTaskAttachments } from "@/actions/attachment";
+import type { AttachmentListItem } from "@/server/services/attachment.service";
 import type { TaskStatus } from "@prisma/client";
 
 // ============================================
@@ -91,6 +93,7 @@ export function TasksPageClient({
     const [selectedTask, setSelectedTask] = useState<TaskListItem | null>(null);
     const [isDetailSheetOpen, setIsDetailSheetOpen] = useState(false);
     const [taskComments, setTaskComments] = useState<CommentListItem[]>([]);
+    const [taskAttachments, setTaskAttachments] = useState<AttachmentListItem[]>([]);
 
     // Tổng số tasks
     const totalTasks = Object.values(taskCounts).reduce((a, b) => a + b, 0);
@@ -136,8 +139,11 @@ export function TasksPageClient({
         setSelectedTask(task);
         setIsDetailSheetOpen(true);
 
-        // Fetch comments cho task using Server Action
-        await refetchComments(task.id);
+        // Fetch comments và attachments cùng lúc
+        await Promise.all([
+            refetchComments(task.id),
+            refetchAttachments(task.id)
+        ]);
     };
 
     // Refetch comments - for real-time updates after CRUD
@@ -153,6 +159,22 @@ export function TasksPageClient({
         } catch (error) {
             console.error("Failed to fetch comments:", error);
             setTaskComments([]);
+        }
+    };
+
+    // Refetch attachments
+    const refetchAttachments = async (taskId: string) => {
+        try {
+            const result = await getTaskAttachments(taskId);
+            if (result.success) {
+                setTaskAttachments(result.data);
+            } else {
+                console.error("Failed to fetch attachments:", result.error);
+                setTaskAttachments([]);
+            }
+        } catch (error) {
+            console.error("Failed to fetch attachments:", error);
+            setTaskAttachments([]);
         }
     };
 
@@ -283,9 +305,11 @@ export function TasksPageClient({
                 onOpenChange={setIsDetailSheetOpen}
                 assignees={members}
                 comments={taskComments}
+                attachments={taskAttachments}
                 currentUserId={currentUser.id}
                 currentUserRole={currentUser.role}
                 onCommentsRefresh={() => selectedTask && refetchComments(selectedTask.id)}
+                onAttachmentsRefresh={() => selectedTask && refetchAttachments(selectedTask.id)}
                 onUpdated={handleTaskUpdated}
                 onDeleted={handleTaskUpdated}
             />

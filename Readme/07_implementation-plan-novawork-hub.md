@@ -1651,10 +1651,23 @@ src/
 
 ---
 
-### 5.2. Đính kèm file (Upload) ⏸️
+### 5.2. Đính kèm file (Upload) ✅ (100% Complete)
 
-  - [ ] **API Route:** `src/app/api/upload/route.ts` xử lý upload lên Supabase Storage/S3.
-  - [ ] **Component:** Tạo `FileUpload` dropzone. Tích hợp vào Form tạo Task và Comment.
+> [!IMPORTANT]
+> **ĐÃ HOÀN THÀNH** - Hệ thống đính kèm file đã tích hợp vào Task Detail
+
+**Backend - ✅ Hoàn thành:**
+ - [x] **API Route:** `src/app/api/upload/route.ts` xử lý upload file vật lý (local storage `public/uploads`).
+ - [x] **Attachment Service:** `src/server/services/attachment.service.ts` xử lý logic database & check permission.
+ - [x] **Server Actions:** `src/actions/attachment.ts` cho CRUD attachments (Create, Delete, Get).
+ - [x] **Validation:** Zod schemas cho attachment (hỗ trợ đường dẫn tương đối).
+
+**Frontend - ✅ Hoàn thành:**
+ - [x] **FileUpload Component:** `src/components/features/tasks/file-upload.tsx` hỗ trợ kéo thả, validate dung lượng (10MB) và loại file.
+ - [x] **Attachment List:** Hiển thị danh sách file với preview ảnh, thông tin size và nút xóa theo quyền.
+ - [x] **Task Detail Integration:** Tích hợp vào `TaskDetailSheet`, hiển thị giữa phần Mô tả và Bình luận.
+ - [x] **Accessibility Fix:** Thêm `SheetTitle` và `SheetDescription` ẩn để fix lỗi Radix UI.
+ - [x] **Real-time updates:** Tự động load lại danh sách file sau khi upload/xóa mà không cần reload trang.
 
 ### 5.3. Chấm công (Log giờ) ⏸️
 
@@ -1669,7 +1682,7 @@ src/
 - [x] **Client-Server boundary violation fixed**
 - [x] **Real-time updates working**
 - [x] **Comment flow tested successfully**
-- [ ] Upload file thành công, hiển thị attachment (GĐ 5.2)
+- [x] Upload file thành công, hiển thị attachment (GĐ 5.2)
 - [ ] Log time và hiển thị tổng giờ (GĐ 5.3)
 
 -----

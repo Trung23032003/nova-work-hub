@@ -135,3 +135,42 @@ export const LogTimeSchema = z.object({
 });
 
 export type LogTimeInput = z.infer<typeof LogTimeSchema>;
+
+// ============================================
+// ATTACHMENT SCHEMAS
+// ============================================
+
+export const CreateAttachmentSchema = z.object({
+    fileName: z.string().min(1, "Tên file là bắt buộc"),
+    fileUrl: z.string().min(1, "URL file là bắt buộc"),
+    fileKey: z.string().min(1, "File key là bắt buộc"),
+    fileType: z.string().optional(),
+    fileSize: z.number().optional(),
+    taskId: z.string().optional(),
+    projectId: z.string().optional(),
+    uploaderId: z.string().optional(),
+});
+
+export type CreateAttachmentInput = z.infer<typeof CreateAttachmentSchema>;
+
+// Schema for file upload validation
+export const UploadFileSchema = z.object({
+    file: z.instanceof(File)
+        .refine((file) => file.size <= 10 * 1024 * 1024, "File không được lớn hơn 10MB")
+        .refine(
+            (file) => {
+                const allowedTypes = [
+                    'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+                    'application/pdf',
+                    'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                    'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    'text/plain',
+                    'application/zip',
+                ];
+                return allowedTypes.includes(file.type);
+            },
+            "Định dạng file không được hỗ trợ"
+        ),
+});
+
+export type UploadFileInput = z.infer<typeof UploadFileSchema>;
