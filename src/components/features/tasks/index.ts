@@ -1,7 +1,13 @@
 /**
  * Barrel exports for task components
  */
+// List View
 export { TaskList } from "./task-list";
 export { TaskRow } from "./task-row";
-export { CreateTaskDialog } from "./create-task-dialog";
 export { TaskFilters } from "./task-filters";
+export { CreateTaskDialog } from "./create-task-dialog";
+
+// Kanban View
+export { KanbanBoard } from "./kanban-board";
+export { KanbanColumn } from "./kanban-column";
+export { TaskCard } from "./task-card";

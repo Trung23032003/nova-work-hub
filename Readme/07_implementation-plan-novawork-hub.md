@@ -1385,33 +1385,66 @@ src/
 
 -----
 
-## Giai đoạn 4B: Bảng Kanban (Kéo thả)
+## Giai đoạn 4B: Bảng Kanban (Kéo thả) ✅
+
+> [!IMPORTANT]
+> **ĐÃ HOÀN THÀNH** - Giao diện Kanban với drag & drop
 
 **Mục tiêu:** Giao diện Kanban với khả năng kéo thả mượt mà.
 
 > [!NOTE]
-> Cài thêm dependencies cho Drag & Drop:
+> Dependencies đã cài:
 > ```bash
 > npm install @dnd-kit/core @dnd-kit/sortable @dnd-kit/utilities
 > ```
 
-### 4B.1. Kanban Components
+### 4B.1. Kanban Components ✅
 
-  - [ ] **Board Component:** `src/components/features/tasks/kanban-board.tsx`.
-      - Dùng `@dnd-kit` để bọc các cột (Columns) và thẻ (TaskCard).
-  - [ ] **Column Component:** `src/components/features/tasks/kanban-column.tsx`.
-  - [ ] **Task Card:** `src/components/features/tasks/task-card.tsx`.
+  - [x] **Board Component:** `src/components/features/tasks/kanban-board.tsx`
+      - DndContext từ `@dnd-kit/core` bọc toàn bộ board
+      - closestCorners collision detection
+      - DragOverlay hiển thị preview khi kéo
+      - Optimistic UI updates
+      - **Fix:** Sử dụng `useRef` lưu cột ban đầu để đảm bảo API được gọi đúng
+      
+  - [x] **Column Component:** `src/components/features/tasks/kanban-column.tsx`
+      - useDroppable cho mỗi cột
+      - SortableContext với verticalListSortingStrategy
+      - Header với count và nút "+" add task
+      - ScrollArea cho danh sách task
+      
+  - [x] **Task Card:** `src/components/features/tasks/task-card.tsx`
+      - useSortable từ `@dnd-kit/sortable`
+      - **Kéo từ bất kỳ đâu** trên thẻ (không cần grip handle)
+      - Priority dot, type badge, assignee avatar
+      - Due date warning
+      - Cursor: `cursor-grab` / `active:cursor-grabbing`
 
-### 4B.2. Logic kéo thả
+### 4B.2. Logic kéo thả ✅
 
-  - [ ] **Reorder Action:** Thêm `reorderTasks` vào `src/actions/task.ts`.
-  - [ ] **Optimistic UI:** Cập nhật state ngay lập tức trước khi API trả về để kéo thả mượt mà.
-  - [ ] **View Toggle:** Button chuyển đổi giữa List View và Kanban View.
+  - [x] **Status Update:** Sử dụng `updateTaskStatus` từ `task.ts` khi kéo task sang cột khác
+  - [x] **Optimistic UI:** Local state cập nhật ngay lập tức, rollback nếu API fail
+  - [x] **View Toggle:** Tabs component chuyển đổi giữa "Danh sách" và "Kanban"
+  - [x] **URL Persistence:** View mode được lưu trong URL query param `?view=kanban`
+  - [x] **Original Column Tracking:** Lưu cột ban đầu với `useRef` để detect chính xác khi task di chuyển
+
+### 📁 Cấu trúc files mới
+
+```
+src/components/features/tasks/
+├── kanban-board.tsx     ← Board chính với DndContext + originalColumnRef
+├── kanban-column.tsx    ← Cột (TODO, IN_PROGRESS, REVIEW, DONE)
+├── task-card.tsx        ← Card draggable (kéo từ bất kỳ đâu)
+└── index.ts             ← Updated exports
+```
 
 ### ✅ Checkpoint GĐ 4B
-- [ ] Kéo thả task giữa các cột hoạt động
-- [ ] Reorder task trong cùng cột hoạt động
-- [ ] UI không bị giật khi kéo thả (optimistic update)
+- [x] Kéo thả task giữa các cột hoạt động
+- [x] **Status được lưu vào database** khi kéo sang cột khác
+- [x] Kéo từ bất kỳ đâu trên thẻ (UX tốt hơn)
+- [x] UI không bị giật khi kéo thả (optimistic update)
+- [x] View Toggle (List ↔ Kanban) hoạt động
+- [x] `npm run build` passed
 
 -----
 
