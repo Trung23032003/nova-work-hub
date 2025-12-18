@@ -1724,43 +1724,61 @@ src/
 
 -----
 
-## Giai đoạn 7: Kiểm thử, Review & Triển khai
+## Giai đoạn 7: Kiểm thử, Tối ưu & Triển khai (Production Readiness)
 
-**Mục tiêu:** Đảm bảo chất lượng code và đưa sản phẩm lên Production.
+**Mục tiêu:** Đảm bảo hệ thống chạy ổn định, bảo mật và đạt hiệu suất cao nhất trước khi bàn giao.
 
-### 7.1. Kiểm thử (Có thể chạy song song từ GĐ 3)
+### 7.1. Kiểm thử toàn diện (Testing)
 
-  - [ ] **Setup Vitest:**
-    ```bash
-    npm install -D vitest @vitejs/plugin-react jsdom @testing-library/react
-    ```
-  - [ ] **Unit Tests:** Test các service functions và Server Actions.
-  - [ ] **Setup Playwright (E2E):**
-    ```bash
-    npm install -D @playwright/test
-    npx playwright install
-    ```
-  - [ ] **E2E Tests:** Login flow, Create Project, Create Task, Kanban DnD.
+- [ ] **Unit Testing (Vitest):**
+  - [ ] Cấu hình môi trường test (`vitest.config.ts`, `src/test/setup.ts`).
+  - [ ] Viết unit tests cho các Server Services quan trọng (Project, Task, Comment).
+  - [ ] Test các hàm xử lý dữ liệu phức tạp (tính toán tiến độ, format thời gian).
+- [ ] **E2E Testing (Playwright):**
+  - [ ] Thiết lập Playwright và cấu hình Browser Context.
+  - [ ] Test luồng nghiệp vụ chính: Đăng nhập -> Tạo Dự án -> Tạo Công việc -> Kéo thả Kanban.
+  - [ ] Test phân quyền: Member không thể chỉnh sửa dự án của Member khác hoặc vào trang Admin.
 
-### 7.2. Rà soát & Tối ưu
+### 7.2. Rà soát Bảo mật & Dữ liệu (Security & Data Integrity)
 
-  - [ ] **Lint:** Chạy `npm run lint` để fix lỗi cú pháp.
-  - [ ] **Type Check:** Chạy `tsc --noEmit` để đảm bảo không lỗi Type.
-  - [ ] **Build Test:** Chạy `npm run build` ở local xem có lỗi build không.
-  - [ ] **Performance:** Kiểm tra bundle size, lazy load components nếu cần.
+- [ ] **RBAC Audit:**
+  - [ ] Rà soát tất cả Server Actions: Đảm bảo luôn check `auth()` và quyền hạn phù hợp.
+  - [ ] Rà soát API Routes: Chặn truy cập trái phép bằng Middleware và logic trong code.
+- [ ] **Input Validation:**
+  - [ ] Kiểm tra lại tất cả Zod Schemas để tránh Injection hoặc dữ liệu rác.
+  - [ ] Đảm bảo file upload được giới hạn dung lượng và đúng định dạng (Mime-type checking).
+- [ ] **Prisma Review:**
+  - [ ] Kiểm tra các quan hệ `onDelete`: Tránh mồ côi dữ liệu hoặc xóa nhầm dữ liệu quan trọng.
+  - [ ] Đánh Index cho các cột thường xuyên tìm kiếm (`assigneeId`, `projectId`, `status`).
 
-### 7.3. Triển khai lên Vercel
+### 7.3. Tối ưu hóa Hiệu suất (Performance & UX)
 
-  - [ ] **Push Github:** Commit code lên repo.
-  - [ ] **Vercel Project:** Import repo.
-  - [ ] **Env Vars:** Nhập đầy đủ biến môi trường trên Vercel (đặc biệt là `DATABASE_URL` pooling).
-  - [ ] **Redeploy:** Trigger build và kiểm tra domain.
+- [ ] **Lighthouse Audit:**
+  - [ ] Đạt điểm Performance > 90 trên cả Mobile và Desktop.
+  - [ ] Tối ưu hóa Images bằng `next/image` và kích thước file đính kèm.
+- [ ] **Frontend Optimization:**
+  - [ ] Áp dụng Skeleton Loading cho tất cả các trang fetching data.
+  - [ ] Lazy load các component nặng (Charts, Kanban Board) khi cần thiết.
+  - [ ] Tránh N+1 query tại tầng Server bằng cách sử dụng `include` hợp lý trong Prisma.
+- [ ] **SEO & Branding:**
+  - [ ] Cài đặt Metadata động cho từng trang (Dynamic Title/Description).
+  - [ ] Hoàn thiện Favicon, Social Open Graph images.
 
-### ✅ Checkpoint GĐ 7 (Final)
-- [ ] Tất cả tests pass
-- [ ] Build production thành công
-- [ ] App chạy ổn định trên Vercel
-- [ ] Monitoring (Sentry) đã setup
+### 7.4. Triển khai & CI/CD (Deployment)
+
+- [ ] **CI Pipeline (Github Actions):**
+  - [ ] Tự động chạy `npm run lint` và `vitest` khi tạo Pull Request.
+  - [ ] Tự động chạy `npm run build` để kiểm tra lỗi biên dịch.
+- [ ] **Production Environment:**
+  - [ ] Setup Production Database trên Supabase (Transaction mode).
+  - [ ] Cấu hình Vercel: Environment variables, Custom domain, SSL.
+  - [ ] Thiết lập Monitoring: Vercel Speed Insights, Sentry (nếu cần).
+
+### ✅ Checkpoint GĐ 7 (Final Delivery)
+- [ ] 100% Critical paths được cover bởi test
+- [ ] Không còn lỗi Lint hoặc TypeScript
+- [ ] Build Production thành công và chạy mượt mà trên môi trường thật
+- [ ] Tài liệu hướng dẫn sử dụng/setup hoàn chỉnh
 
 -----
 
