@@ -1,36 +1,94 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🚀 NovaWork Hub - Project Management Platform
 
-## Getting Started
+![NovaWork Hub Hero](./Readme/assets/hero.png)
 
-First, run the development server:
+**NovaWork Hub** là một nền tảng quản lý dự án và công việc toàn diện, được thiết kế để tối ưu hóa hiệu suất làm việc nhóm và theo sát tiến độ dự án một cách trực quan, hiện đại. Với công nghệ Next.js 15 và thiết kế Glassmorphism, NovaWork mang lại trải nghiệm mượt mà và cao cấp.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+---
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## ✨ Tính năng nổi bật hiện tại
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 📊 Dashboard Tổng quan
+Hệ thống cung cấp cái nhìn toàn cảnh về các dự án đang hoạt động, thống kê trạng thái công việc và khối lượng công việc của từng thành viên thông qua biểu đồ trực quan.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+![Dashboard Preview](./Readme/assets/dashboard.png)
 
-## Learn More
+### 📂 Quản lý Dự án (Project Management)
+- Tạo và quản lý danh sách dự án với đầy đủ thông tin: Mã dự án, Khách hàng, Ngân sách, Thời gian.
+- Theo dõi tiến độ tổng thể của từng dự án.
+- Phân quyền quản lý cho Project Manager (PM) và Admin.
 
-To learn more about Next.js, take a look at the following resources:
+![Projects List](./Readme/assets/projects.png)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 📋 Trang Chi tiết Dự án
+Mỗi dự án có không gian riêng với các tab điều hướng: Tổng quan, Công việc, Thành viên và Cài đặt.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+![Project Detail](./Readme/assets/detail.png)
 
-## Deploy on Vercel
+### 📌 Bảng Kanban Thông minh
+- Quản lý công việc bằng phương pháp kéo thả (Drag & Drop) mượt mà.
+- Phân loại công việc theo trạng thái: Cần làm, Đang làm, Đánh giá, Hoàn thành.
+- Cập nhật trạng thái công việc tức thời (Optimistic UI).
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+![Kanban Board](./Readme/assets/kanban.png)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### 📝 Chi tiết Công việc & Bình luận
+- Xem chi tiết công việc trong một Drawer (Sheet) hiện đại.
+- Chỉnh sửa tiêu đề, mô tả, độ ưu tiên và người thực hiện trực tiếp.
+- Hệ thống bình luận thời gian thực cho phép trao đổi trực tiếp trên từng task.
+- Hỗ trợ đính kèm file và checklist công việc con.
+
+### 👥 Quản trị Người dùng & Phân quyền
+- Quản lý danh sách nhân sự trong hệ thống.
+- Phân vai trò rõ ràng: Admin, PM, Member, Viewer.
+- Dashboard quản trị dành riêng cho Admin.
+
+![User Management](./Readme/assets/users.png)
+
+---
+
+## 🛠 Công nghệ sử dụng
+
+- **Framework:** Next.js 15 (App Router)
+- **Programming:** TypeScript
+- **Styling:** Tailwind CSS v4 & Lucide Icons
+- **Database:** PostgreSQL (Supabase)
+- **ORM:** Prisma 7
+- **Auth:** Auth.js v5 (NextAuth)
+- **UI Components:** Shadcn UI (Radix UI)
+- **Library:** @dnd-kit (Kanban), Recharts (Charts), React Hook Form, Zod
+
+---
+
+## 🚀 Hướng dẫn cài đặt nhanh
+
+1. **Clone project:**
+   ```bash
+   git clone https://github.com/your-username/nova-work-hub.git
+   cd nova-work-hub
+   ```
+
+2. **Cài đặt dependencies:**
+   ```bash
+   npm install
+   ```
+
+3. **Cấu hình môi trường:**
+   Tạo file `.env` và điền các thông tin (tham khảo `.env.example`):
+   ```env
+   DATABASE_URL="your_postgresql_url"
+   DIRECT_URL="your_direct_postgresql_url"
+   AUTH_SECRET="your_auth_secret"
+   ```
+
+4. **Khởi tạo Database:**
+   ```bash
+   npx prisma generate
+   npx prisma db push
+   npx prisma db seed
+   ```
+
+5. **Chạy dự án:**
+   ```bash
+   npm run dev
+   ```
