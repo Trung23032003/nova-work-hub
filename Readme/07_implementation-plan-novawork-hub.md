@@ -1306,28 +1306,75 @@ Hiển thị:
 
 -----
 
-## Giai đoạn 4A: Quản lý Task & Dạng danh sách
+## Giai đoạn 4A: Quản lý Task & Dạng danh sách ✅
+
+> [!IMPORTANT]
+> **ĐÃ HOÀN THÀNH** - Module Task cơ bản với List View
 
 **Mục tiêu:** Quản lý Task cơ bản với List View (nhanh hoàn thành, có thể demo sớm).
 
-### 4A.1. Task Backend
+### 4A.1. Task Backend ✅
 
-  - [ ] **Zod Schema:** `CreateTaskSchema` (bao gồm title, priority, assignee, due date) trong `src/lib/zod-schemas.ts`.
-  - [ ] **Service:** `src/server/services/task.service.ts` (Get tasks by project, get detail).
-  - [ ] **Action:** `src/actions/task.ts` (Create, Update, Delete).
+  - [x] **Zod Schema:** `CreateTaskSchema`, `UpdateTaskSchema` đã có sẵn trong `src/lib/zod-schemas.ts`.
+  - [x] **Service:** `src/server/services/task.service.ts`
+      - `getTasksByProject(options)` - Lấy danh sách tasks với filter, sort, paginate
+      - `getTaskById(taskId)` - Lấy chi tiết task
+      - `getProjectMembers(projectId)` - Lấy danh sách members để assign
+      - `getNextTaskPosition()` - Lấy position cho task mới (chuẩn bị cho Kanban)
+      - `getTaskCountsByStatus(projectId)` - Đếm tasks theo status
+  - [x] **Action:** `src/actions/task.ts`
+      - `createTask(input)` - Tạo task mới
+      - `updateTask(input)` - Cập nhật task
+      - `updateTaskStatus(taskId, status)` - Đổi status (inline)
+      - `deleteTask(taskId)` - Xóa task
+      - `updateTaskAssignee(taskId, assigneeId)` - Đổi assignee
 
-### 4A.2. Giao diện danh sách Task
+### 4A.2. Giao diện danh sách Task ✅
 
-  - [ ] **Task Page:** `src/app/(dashboard)/projects/[projectId]/tasks/page.tsx`.
-  - [ ] **List Component:** `src/components/features/tasks/task-list.tsx`.
-      - Hiển thị dạng table với các cột: Title, Status, Priority, Assignee, Due Date.
-      - Inline status change (click để đổi status).
-  - [ ] **Create Task Form:** Modal hoặc inline form để tạo task nhanh.
+#### 📁 Cấu trúc files đã tạo
+
+```
+src/
+├── components/features/tasks/
+│   ├── index.ts                    ← Barrel exports
+│   ├── task-row.tsx                ← Row trong table với inline status change
+│   ├── task-list.tsx               ← Table component + empty state
+│   ├── task-filters.tsx            ← Bộ lọc: status, priority, assignee, search
+│   └── create-task-dialog.tsx      ← Modal tạo task mới
+│
+└── app/(dashboard)/projects/[projectId]/tasks/
+    ├── page.tsx                    ← Server Component (data fetching)
+    └── page-client.tsx             ← Client Component (interactive UI)
+```
+
+#### Tính năng đã implement:
+
+| Tính năng | Mô tả |
+|-----------|-------|
+| **Table View** | Hiển thị tasks dạng table với các cột: Title, Status, Priority, Assignee, Due Date |
+| **Inline Status Change** | Dropdown đổi status ngay trong table row |
+| **Priority Badge** | Badge màu theo độ ưu tiên (Low/Medium/High/Critical) |
+| **Due Date Warning** | Hiển thị cảnh báo nếu task quá hạn hoặc sắp hết hạn |
+| **Filters** | Lọc theo status, priority, assignee, search by title |
+| **Stats Summary** | 4 cards hiển thị số lượng tasks theo status |
+| **Create Task Dialog** | Modal form với type, priority, status, assignee, due date, estimate hours |
+| **Delete Task** | Xóa task với confirmation |
+
+#### UI Components mới:
+
+| Component | File | Mô tả |
+|-----------|------|-------|
+| `TaskRow` | `task-row.tsx` | Row với status dropdown, priority badge, assignee avatar, actions menu |
+| `TaskList` | `task-list.tsx` | Table wrapper với empty state |
+| `TaskFilters` | `task-filters.tsx` | Search + Status/Priority/Assignee dropdowns + Active filters badges |
+| `CreateTaskDialog` | `create-task-dialog.tsx` | Modal form với react-hook-form + zod validation |
 
 ### ✅ Checkpoint GĐ 4A
-- [ ] CRUD Task hoạt động (tạo, sửa, xóa)
-- [ ] List view hiển thị đầy đủ thông tin task
-- [ ] Filter theo status hoạt động
+- [x] CRUD Task hoạt động (tạo, sửa, xóa)
+- [x] List view hiển thị đầy đủ thông tin task
+- [x] Filter theo status hoạt động
+- [x] Inline status change
+- [x] `npm run build` passed
 
 -----
 

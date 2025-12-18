@@ -2,56 +2,89 @@
  * PROJECT TASKS PAGE
  * 
  * URL: /projects/[projectId]/tasks
- * Placeholder cho danh sách tasks của project
- * Sẽ được implement đầy đủ ở Giai đoạn 4
+ * Server Component - Fetch tasks data và render
+ * 
+ * Features:
+ * - Hiển thị danh sách tasks dạng table
+ * - Filter theo status, priority, assignee
+ * - Search task
+ * - Tạo task mới
+ * - Inline status change
  */
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Plus, ListTodo } from "lucide-react";
+import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
+import { getTasksByProject, getProjectMembers, getTaskCountsByStatus } from "@/server/services/task.service";
+import { canAccessProject } from "@/server/services/project.service";
+import { TasksPageClient } from "./page-client";
 
 interface ProjectTasksPageProps {
     params: Promise<{ projectId: string }>;
+    searchParams: Promise<{
+        status?: string;
+        priority?: string;
+        assignee?: string;
+        search?: string;
+    }>;
 }
 
-export default async function ProjectTasksPage({ params }: ProjectTasksPageProps) {
+export default async function ProjectTasksPage({
+    params,
+    searchParams: searchParamsPromise,
+}: ProjectTasksPageProps) {
+    // 1. Auth check
+    const session = await auth();
+    if (!session?.user?.id) {
+        redirect("/login");
+    }
+
     const { projectId } = await params;
+    const searchParams = await searchParamsPromise;
+
+    // 2. Authorization - kiểm tra quyền truy cập project
+    const hasAccess = await canAccessProject(
+        projectId,
+        session.user.id,
+        session.user.role || "MEMBER"
+    );
+
+    if (!hasAccess) {
+        redirect("/projects");
+    }
+
+    // 3. Parse search params
+    const status = searchParams.status as "TODO" | "IN_PROGRESS" | "REVIEW" | "DONE" | undefined;
+    const priority = searchParams.priority as "LOW" | "MEDIUM" | "HIGH" | "CRITICAL" | undefined;
+    const assigneeId = searchParams.assignee;
+    const search = searchParams.search;
+
+    // 4. Fetch data in parallel
+    const [{ tasks, total }, members, taskCounts] = await Promise.all([
+        getTasksByProject({
+            projectId,
+            status,
+            priority,
+            assigneeId,
+            search,
+            take: 100, // Lấy nhiều hơn để client-side filter nếu cần
+        }),
+        getProjectMembers(projectId),
+        getTaskCountsByStatus(projectId),
+    ]);
 
     return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="text-xl font-semibold">Công việc</h2>
-                    <p className="text-sm text-muted-foreground">
-                        Quản lý các tasks của dự án
-                    </p>
-                </div>
-                <Button className="gap-2">
-                    <Plus className="h-4 w-4" />
-                    Tạo task mới
-                </Button>
-            </div>
-
-            {/* Empty State - Placeholder */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>Chưa có công việc nào</CardTitle>
-                    <CardDescription>
-                        Bắt đầu bằng cách tạo task đầu tiên cho dự án
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="flex flex-col items-center py-12">
-                    <ListTodo className="h-16 w-16 text-muted-foreground/30 mb-4" />
-                    <p className="text-sm text-muted-foreground mb-4 text-center max-w-md">
-                        Tasks giúp bạn chia nhỏ dự án thành các công việc cụ thể,
-                        gán cho thành viên và theo dõi tiến độ.
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                        (Chức năng sẽ được phát triển đầy đủ ở Giai đoạn 4)
-                    </p>
-                </CardContent>
-            </Card>
-        </div>
+        <TasksPageClient
+            projectId={projectId}
+            tasks={tasks}
+            total={total}
+            members={members}
+            taskCounts={taskCounts}
+            initialFilters={{
+                status,
+                priority,
+                assigneeId,
+                search,
+            }}
+        />
     );
 }
