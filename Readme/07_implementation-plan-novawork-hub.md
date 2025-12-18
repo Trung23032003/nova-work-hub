@@ -1225,9 +1225,14 @@ src/
 
 | Component | File | Mô tả |
 |-----------|------|-------|
-| `ProjectCard` | `project-card.tsx` | Card với status, priority, PM, task count, actions |
+| `ProjectCard` | `project-card.tsx` | Card với status, priority, PM, task count, actions, **double-click để xem chi tiết** |
 | `ProjectList` | `project-list.tsx` | Grid layout + empty state + delete confirmation |
 | `CreateProjectDialog` | `create-project-dialog.tsx` | Modal form với react-hook-form + zod |
+
+**Tính năng ProjectCard:**
+- ✅ Hiển thị status, priority, PM, task count
+- ✅ Menu 3 chấm với actions: Xem chi tiết, Chỉnh sửa, Xóa
+- ✅ **Double-click** vào card để chuyển đến trang chi tiết project
 
 **Lưu ý Zod v4 + @hookform/resolvers:**
 - Cần sử dụng explicit type cho form values
@@ -1295,11 +1300,13 @@ Hiển thị:
 - ✅ Tab Tasks (placeholder cho Giai đoạn 4)
 - ✅ Status dropdown thay đổi trực tiếp
 - ✅ Authorization check (chỉ PM/ADMIN edit)
+- ✅ **Double-click** vào card để xem chi tiết project
 - ✅ `npm run build` passed
 
 ### ✅ Checkpoint GĐ 3
 - [x] Tạo dự án mới thành công, hiển thị trong danh sách
 - [x] Click vào dự án → vào trang detail với đầy đủ tabs
+- [x] Double-click vào card → chuyển đến trang chi tiết
 - [ ] Loading skeleton hiển thị khi đang fetch data (TODO)
 
 

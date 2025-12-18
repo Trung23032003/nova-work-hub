@@ -5,9 +5,14 @@
  * 
  * Hiển thị thông tin tóm tắt của một project trong danh sách
  * Dùng trong trang /projects
+ * 
+ * Features:
+ * - Double-click để xem chi tiết project
+ * - Menu 3 chấm với các action: Xem chi tiết, Chỉnh sửa, Xóa
  */
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
 import {
@@ -82,6 +87,7 @@ interface ProjectCardProps {
 }
 
 export function ProjectCard({ project, onEdit, onDelete }: ProjectCardProps) {
+    const router = useRouter();
     const status = statusConfig[project.status];
     const priority = priorityConfig[project.priority];
 
@@ -101,8 +107,16 @@ export function ProjectCard({ project, onEdit, onDelete }: ProjectCardProps) {
         project.status !== "DONE" &&
         project.status !== "CANCELED";
 
+    // Handle double-click to navigate to project detail
+    const handleDoubleClick = () => {
+        router.push(`/projects/${project.id}`);
+    };
+
     return (
-        <Card className="group hover:shadow-md transition-shadow duration-200">
+        <Card
+            className="group hover:shadow-md transition-shadow duration-200 cursor-pointer"
+            onDoubleClick={handleDoubleClick}
+        >
             <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                     <div className="space-y-1 flex-1 min-w-0">
