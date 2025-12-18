@@ -1697,11 +1697,17 @@ src/
 > npm install recharts
 > ```
 
-### 6.1. Quản lý người dùng
+### 6.1. Quản lý người dùng ✅
 
-  - [ ] **Page:** `src/app/(dashboard)/admin/users/page.tsx`.
-  - [ ] **Chức năng:** List user, Tạo user mới (cấp password mặc định), Set Role/Department.
-  - [ ] **Security:** Đảm bảo Server Action check `session.user.role === 'ADMIN'`.
+  - [x] **Service:** `src/server/services/user.service.ts` (Query users, departments, details).
+  - [x] **Actions:** `src/actions/user.ts` (CRUD: createUser, updateUser, updateUserStatus, deleteUser).
+  - [x] **Page Admin:** `src/app/(dashboard)/admin/users/page.tsx` & `page-client.tsx`.
+  - [x] **Components:**
+      - `UserList`: Bảng danh sách người dùng với stats, roles & status badges.
+      - `CreateUserDialog`: Form tạo user mới với mật khẩu mặc định.
+  - [x] **Chức năng:** List user, Tạo user mới, Set Role/Department, Đổi trạng thái, Xóa an toàn.
+  - [x] **Security:** Kiểm tra quyền `ADMIN` ở cả tầng Server Service, Action và UI.
+  - [x] **Data Integrity:** Cập nhật Prisma Schema (`onDelete: Cascade/SetNull`) để hỗ trợ xóa user có dữ liệu lịch sử.
 
 ### 6.2. Biểu đồ Dashboard
 
@@ -1709,9 +1715,10 @@ src/
   - [ ] **UI:** Vẽ biểu đồ tròn (Task Status) và biểu đồ cột (Workload) tại trang chủ `src/app/(dashboard)/page.tsx`.
 
 ### ✅ Checkpoint GĐ 6
-- [ ] Admin có thể quản lý users
+- [x] Admin có thể quản lý users (Thêm, Sửa trạng thái, Xóa an toàn)
 - [ ] Dashboard hiển thị charts đúng data
-- [ ] Non-admin không truy cập được trang admin
+- [x] Non-admin không truy cập được trang quản trị users
+
 
 -----
 

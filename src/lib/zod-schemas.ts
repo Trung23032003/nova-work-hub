@@ -116,6 +116,20 @@ export const CreateUserSchema = z.object({
 
 export type CreateUserInput = z.infer<typeof CreateUserSchema>;
 
+export const UpdateUserSchema = CreateUserSchema.partial().extend({
+    id: z.string().min(1),
+    status: z.enum(["ACTIVE", "INACTIVE", "LOCKED"]).optional(),
+    password: z
+        .string()
+        .min(8, "Mật khẩu phải có ít nhất 8 ký tự")
+        .regex(/[A-Z]/, "Mật khẩu phải có ít nhất 1 chữ hoa")
+        .regex(/[0-9]/, "Mật khẩu phải có ít nhất 1 số")
+        .optional(),
+});
+
+export type UpdateUserInput = z.infer<typeof UpdateUserSchema>;
+
+
 // ============================================
 // COMMENT & TIME LOG SCHEMAS
 // ============================================

@@ -14,6 +14,7 @@
 
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shield, Users, FolderKanban, Settings } from "lucide-react";
 
@@ -49,22 +50,25 @@ export default async function AdminPage() {
 
             {/* Admin Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card className="hover:shadow-md transition-shadow cursor-pointer">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <Users className="h-5 w-5 text-blue-500" />
-                            Quản lý Users
-                        </CardTitle>
-                        <CardDescription>
-                            Thêm, sửa, xóa và phân quyền users
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-sm text-muted-foreground">
-                            Đang phát triển...
-                        </p>
-                    </CardContent>
-                </Card>
+                <Link href="/admin/users">
+                    <Card className="hover:shadow-md transition-shadow cursor-pointer">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <Users className="h-5 w-5 text-blue-500" />
+                                Quản lý Users
+                            </CardTitle>
+                            <CardDescription>
+                                Thêm, sửa, xóa và phân quyền users
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-sm text-muted-foreground">
+                                Quản lý nhân sự, phòng ban và quyền truy cập.
+                            </p>
+                        </CardContent>
+                    </Card>
+                </Link>
+
 
                 <Card className="hover:shadow-md transition-shadow cursor-pointer">
                     <CardHeader>
