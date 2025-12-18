@@ -11,3 +11,7 @@ export { CreateTaskDialog } from "./create-task-dialog";
 export { KanbanBoard } from "./kanban-board";
 export { KanbanColumn } from "./kanban-column";
 export { TaskCard } from "./task-card";
+
+// Task Detail
+export { TaskDetailSheet } from "./task-detail-sheet";
+export { TaskChecklist } from "./task-checklist";

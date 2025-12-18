@@ -198,8 +198,16 @@ export function TaskRow({ task, onEdit, onDeleted }: TaskRowProps) {
         }
     };
 
+    // Handle row click - open detail sheet
+    const handleRowClick = () => {
+        onEdit?.(task);
+    };
+
     return (
-        <TableRow className={isDeleting ? "opacity-50" : ""}>
+        <TableRow
+            className={`cursor-pointer hover:bg-muted/50 ${isDeleting ? "opacity-50" : ""}`}
+            onClick={handleRowClick}
+        >
             {/* Title */}
             <TableCell className="font-medium">
                 <div className="flex flex-col gap-1">
@@ -213,7 +221,7 @@ export function TaskRow({ task, onEdit, onDeleted }: TaskRowProps) {
             </TableCell>
 
             {/* Status */}
-            <TableCell>
+            <TableCell onClick={(e) => e.stopPropagation()}>
                 <Select
                     value={task.status}
                     onValueChange={(value) => handleStatusChange(value as TaskStatus)}
@@ -328,7 +336,7 @@ export function TaskRow({ task, onEdit, onDeleted }: TaskRowProps) {
             </TableCell>
 
             {/* Actions */}
-            <TableCell className="text-right">
+            <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button

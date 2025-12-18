@@ -24,6 +24,7 @@ import {
     TaskFilters,
     CreateTaskDialog,
     KanbanBoard,
+    TaskDetailSheet,
 } from "@/components/features/tasks";
 import type { TaskFiltersValue } from "@/components/features/tasks/task-filters";
 import type { TaskListItem } from "@/server/services/task.service";
@@ -79,6 +80,10 @@ export function TasksPageClient({
     const [createTaskStatus, setCreateTaskStatus] = useState<TaskStatus>("TODO");
     const [filters, setFilters] = useState<TaskFiltersValue>(initialFilters);
 
+    // Task detail sheet state
+    const [selectedTask, setSelectedTask] = useState<TaskListItem | null>(null);
+    const [isDetailSheetOpen, setIsDetailSheetOpen] = useState(false);
+
     // Tổng số tasks
     const totalTasks = Object.values(taskCounts).reduce((a, b) => a + b, 0);
 
@@ -118,10 +123,10 @@ export function TasksPageClient({
         router.refresh();
     };
 
-    // Handle edit task (placeholder - sẽ implement ở phase sau)
-    const handleEditTask = (task: TaskListItem) => {
-        // TODO: Implement edit task sheet
-        console.log("Edit task:", task.id);
+    // Handle task click - mở Task Detail Sheet
+    const handleTaskClick = (task: TaskListItem) => {
+        setSelectedTask(task);
+        setIsDetailSheetOpen(true);
     };
 
     // Handle add task from Kanban column
@@ -223,13 +228,13 @@ export function TasksPageClient({
             {viewMode === "list" ? (
                 <TaskList
                     tasks={tasks}
-                    onEdit={handleEditTask}
+                    onEdit={handleTaskClick}
                     onDeleted={handleTaskUpdated}
                 />
             ) : (
                 <KanbanBoard
                     tasks={tasks}
-                    onTaskClick={handleEditTask}
+                    onTaskClick={handleTaskClick}
                     onAddTask={handleAddTaskFromKanban}
                     onTaskMoved={handleTaskUpdated}
                 />
@@ -243,6 +248,17 @@ export function TasksPageClient({
                 onOpenChange={setIsCreateDialogOpen}
                 onCreated={handleTaskCreated}
             />
+
+            {/* Task Detail Sheet */}
+            <TaskDetailSheet
+                task={selectedTask}
+                open={isDetailSheetOpen}
+                onOpenChange={setIsDetailSheetOpen}
+                assignees={members}
+                onUpdated={handleTaskUpdated}
+                onDeleted={handleTaskUpdated}
+            />
         </div>
     );
 }
+
