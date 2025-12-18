@@ -1709,15 +1709,17 @@ src/
   - [x] **Security:** Kiểm tra quyền `ADMIN` ở cả tầng Server Service, Action và UI.
   - [x] **Data Integrity:** Cập nhật Prisma Schema (`onDelete: Cascade/SetNull`) để hỗ trợ xóa user có dữ liệu lịch sử.
 
-### 6.2. Biểu đồ Dashboard
+### 6.2. Biểu đồ Dashboard ✅
 
-  - [ ] **Service:** `src/server/services/report.service.ts` (Query count task by status, workload by user).
-  - [ ] **UI:** Vẽ biểu đồ tròn (Task Status) và biểu đồ cột (Workload) tại trang chủ `src/app/(dashboard)/page.tsx`.
+  - [x] **Service:** `src/server/services/report.service.ts` (Query count task by status, workload by user).
+  - [x] **UI:** Vẽ biểu đồ tròn (Task Status) và biểu đồ cột (Workload) tại trang chủ `src/app/(dashboard)/dashboard/page.tsx`.
+  - [x] **Stats:** Hiển thị tổng số dự án, task và nhân sự thực tế.
 
 ### ✅ Checkpoint GĐ 6
 - [x] Admin có thể quản lý users (Thêm, Sửa trạng thái, Xóa an toàn)
-- [ ] Dashboard hiển thị charts đúng data
+- [x] Dashboard hiển thị charts đúng data (Task distribution, User workload)
 - [x] Non-admin không truy cập được trang quản trị users
+
 
 
 -----
