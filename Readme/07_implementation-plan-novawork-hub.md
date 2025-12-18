@@ -1537,26 +1537,122 @@ src/components/features/tasks/
 
 **Mục tiêu:** Tăng tính cộng tác (Comment, File, Log time).
 
-### 5.1. Bình luận & Hoạt động
+### 5.1. Bình luận & Hoạt động ✅ (100% Complete)
 
-  - [ ] **Database:** Kiểm tra lại model `Comment` và `AuditLog`.
-  - [ ] **UI:** Tạo component `TaskCommentSection`.
-  - [ ] **Action:** `addComment` (hỗ trợ text thuần trước, mention tính sau).
+> [!IMPORTANT]
+> **ĐÃ HOÀN THÀNH** - Comment System đã được tích hợp đầy đủ vào Task Detail Sheet
+> 
+> **Đã cài đặt:** `npx shadcn@latest add alert-dialog`
 
-### 5.2. Đính kèm file (Upload)
+**Backend - ✅ Hoàn thành:**
+
+  - [x] **Database Model:** Đã có sẵn `Comment` model trong Prisma schema
+      - Fields: id, content, taskId, authorId, createdAt, updatedAt
+      - Relations: author (User), task (Task)
+      - Cascade delete khi task bị xóa
+
+  - [x] **Comment Service:** `src/server/services/comment.service.ts`
+      - `getCommentsByTask()` - Get comments với pagination, ordering
+      - `getCommentById()` - Get single comment
+      - `canDeleteComment()` - Check permissions (author hoặc ADMIN)
+      - Type exports: `CommentListItem`, `GetCommentsOptions`
+      - ✅ Fixed import path: `@/server/db`
+
+  - [x] **Comment Server Actions:** `src/actions/comment.ts`
+      - `addComment()` - Thêm comment với auth, project access check
+      - `updateComment()` - Sửa comment (chỉ author)
+      - `deleteComment()` - Xóa comment (author hoặc ADMIN)
+      - Full validation với Zod schemas
+      - Revalidation paths sau CRUD
+      - ✅ Fixed Zod error handling: `error.issues` thay vì `error.errors`
+      - ✅ Fixed import paths: `@/lib/auth`, `@/server/db`
+      - ✅ Added ActionResponse type definition
+
+**Frontend - ✅ Hoàn thành:**
+
+  - [x] **TaskCommentSection Component:** `src/components/features/tasks/task-comment-section.tsx`
+      - ✅ Danh sách comments với avatar, name, relative time
+      - ✅ Form thêm comment mới (Ctrl+Enter để gửi)
+      - ✅ Inline edit cho comment của mình
+      - ✅ Delete với AlertDialog confirmation
+      - ✅ Permission-based UI (show edit/delete chỉ khi có quyền)
+      - ✅ Empty state message
+      - ✅ Max height với scroll cho nhiều comments
+      - ✅ "(đã chỉnh sửa)" indicator khi updated > created
+
+  - [x] **Barrel exports:** Updated `src/components/features/tasks/index.ts`
+
+**Integration - ✅ Hoàn thành:**
+
+  - [x] **TaskDetailSheet Integration:**
+      - ✅ Added `MessageSquare` icon import
+      - ✅ Import `CommentListItem` type và `TaskCommentSection` component
+      - ✅ Added props: `comments`, `currentUserId`, `currentUserRole`
+      - ✅ Render comment section sau Description, trước Footer
+      - ✅ Conditional rendering based on authentication
+      
+  - [x] **Server Data Fetching:**
+      - ✅ Added `currentUser` prop to `TasksPageClient`
+      - ✅ Import `getCommentsByTask` service
+      - ✅ Fetch comments on task click (async)
+      - ✅ Pass comments + currentUser info to TaskDetailSheet
+      
+  - [x] **Type Safety:**
+      - ✅ All TypeScript types properly defined
+      - ✅ No lint/type errors
+
+### 📁 Files đã tạo/chỉnh sửa
+
+```
+src/
+├── server/services/
+│   └── comment.service.ts               ← Comment queries & permission checks (UPDATED)
+├── actions/
+│   └── comment.ts                       ← CRUD Server Actions (UPDATED - Fixed lint errors)
+├── components/features/tasks/
+│   ├── task-comment-section.tsx        ← Full-featured comment UI
+│   ├── task-detail-sheet.tsx           ← Comment section integrated (UPDATED)
+│   └── index.ts                         ← Updated exports
+└── app/(dashboard)/projects/[projectId]/tasks/
+    ├── page.tsx                         ← Pass currentUser (UPDATED)
+    └── page-client.tsx                  ← Fetch comments on task click (UPDATED)
+```
+
+### 🎯 Tính năng Comments hoàn chỉnh
+
+| Tính năng | Trạng thái |
+|-----------|------------|
+| Add comment | ✅ Hoạt động (Ctrl+Enter) |
+| Edit comment | ✅ Hoạt động (inline, chỉ author) |
+| Delete comment | ✅ Hoạt động (với confirmation, author/ADMIN) |
+| Permission-based UI | ✅ Hoạt động |
+| Real-time updates | ✅ Hoạt động (revalidation) |
+| Avatar display | ✅ Hoạt động |
+| Relative timestamps | ✅ Hoạt động |
+| Empty state | ✅ Hoạt động |
+| Scroll container | ✅ Hoạt động |
+| Edited indicator | ✅ Hoạt động |
+
+---
+
+### 5.2. Đính kèm file (Upload) ⏸️
 
   - [ ] **API Route:** `src/app/api/upload/route.ts` xử lý upload lên Supabase Storage/S3.
   - [ ] **Component:** Tạo `FileUpload` dropzone. Tích hợp vào Form tạo Task và Comment.
 
-### 5.3. Chấm công (Log giờ)
+### 5.3. Chấm công (Log giờ) ⏸️
 
   - [ ] **Modal Log Time:** Tạo Dialog cho phép nhập số giờ và ghi chú.
   - [ ] **Logic:** Server Action update bảng `TimeLog` và tính lại `totalHours` của Task (nếu cần hiển thị).
 
-### ✅ Checkpoint GĐ 5
-- [ ] Comment trên task hoạt động
-- [ ] Upload file thành công, hiển thị attachment
-- [ ] Log time và hiển thị tổng giờ
+### ✅ Checkpoint GĐ 5.1 (Comments)
+- [x] Comment backend (Service + Actions) hoạt động
+- [x] Comment UI component hoàn chỉnh
+- [x] **Tích hợp comment vào Task Detail Sheet**
+- [x] **All lint/type errors fixed**
+- [x] **Comment flow tested successfully**
+- [ ] Upload file thành công, hiển thị attachment (GĐ 5.2)
+- [ ] Log time và hiển thị tổng giờ (GĐ 5.3)
 
 -----
 

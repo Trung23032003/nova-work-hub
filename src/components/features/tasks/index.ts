@@ -15,3 +15,4 @@ export { TaskCard } from "./task-card";
 // Task Detail
 export { TaskDetailSheet } from "./task-detail-sheet";
 export { TaskChecklist } from "./task-checklist";
+export { TaskCommentSection } from "./task-comment-section";

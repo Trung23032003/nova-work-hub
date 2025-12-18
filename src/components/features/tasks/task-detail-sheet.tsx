@@ -25,6 +25,7 @@ import {
     CheckSquare,
     FileText,
     Tag,
+    MessageSquare,
 } from "lucide-react";
 
 import {
@@ -58,7 +59,9 @@ import { cn } from "@/lib/utils";
 import { updateTask, deleteTask } from "@/actions/task";
 import { UpdateTaskSchema, type UpdateTaskInput } from "@/lib/zod-schemas";
 import type { TaskListItem } from "@/server/services/task.service";
+import type { CommentListItem } from "@/server/services/comment.service";
 import type { Priority, TaskStatus } from "@prisma/client";
+import { TaskCommentSection } from "./task-comment-section";
 
 // ============================================
 // TYPES
@@ -76,6 +79,9 @@ interface TaskDetailSheetProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     assignees: AssigneeOption[];
+    comments?: CommentListItem[];
+    currentUserId?: string;
+    currentUserRole?: string;
     onUpdated?: () => void;
     onDeleted?: () => void;
 }
@@ -123,6 +129,9 @@ export function TaskDetailSheet({
     open,
     onOpenChange,
     assignees,
+    comments = [],
+    currentUserId,
+    currentUserRole,
     onUpdated,
     onDeleted,
 }: TaskDetailSheetProps) {
@@ -482,6 +491,25 @@ export function TaskDetailSheet({
                             className="min-h-[150px] resize-none"
                         />
                     </div>
+
+                    <Separator />
+
+                    {/* Comments Section */}
+                    {currentUserId && currentUserRole && task && (
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-2">
+                                <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                                <Label className="text-sm font-semibold">Bình luận</Label>
+                            </div>
+                            <TaskCommentSection
+                                taskId={task.id}
+                                comments={comments}
+                                currentUserId={currentUserId}
+                                currentUserRole={currentUserRole}
+                                onCommentAdded={onUpdated}
+                            />
+                        </div>
+                    )}
                 </div>
 
                 {/* Footer Actions - Sticky */}

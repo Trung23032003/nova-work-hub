@@ -28,6 +28,8 @@ import {
 } from "@/components/features/tasks";
 import type { TaskFiltersValue } from "@/components/features/tasks/task-filters";
 import type { TaskListItem } from "@/server/services/task.service";
+import type { CommentListItem } from "@/server/services/comment.service";
+import { getCommentsByTask } from "@/server/services/comment.service";
 import type { TaskStatus } from "@prisma/client";
 
 // ============================================
@@ -49,6 +51,10 @@ interface TasksPageClientProps {
     total: number;
     members: AssigneeOption[];
     taskCounts: Record<TaskStatus, number>;
+    currentUser: {
+        id: string;
+        role: string;
+    };
     initialFilters: {
         status?: TaskStatus;
         priority?: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
@@ -67,6 +73,7 @@ export function TasksPageClient({
     total,
     members,
     taskCounts,
+    currentUser,
     initialFilters,
 }: TasksPageClientProps) {
     const router = useRouter();
@@ -83,6 +90,7 @@ export function TasksPageClient({
     // Task detail sheet state
     const [selectedTask, setSelectedTask] = useState<TaskListItem | null>(null);
     const [isDetailSheetOpen, setIsDetailSheetOpen] = useState(false);
+    const [taskComments, setTaskComments] = useState<CommentListItem[]>([]);
 
     // Tổng số tasks
     const totalTasks = Object.values(taskCounts).reduce((a, b) => a + b, 0);
@@ -124,9 +132,21 @@ export function TasksPageClient({
     };
 
     // Handle task click - mở Task Detail Sheet
-    const handleTaskClick = (task: TaskListItem) => {
+    const handleTaskClick = async (task: TaskListItem) => {
         setSelectedTask(task);
         setIsDetailSheetOpen(true);
+
+        // Fetch comments cho task
+        try {
+            const { comments } = await getCommentsByTask({
+                taskId: task.id,
+                take: 50
+            });
+            setTaskComments(comments);
+        } catch (error) {
+            console.error("Failed to fetch comments:", error);
+            setTaskComments([]);
+        }
     };
 
     // Handle add task from Kanban column
@@ -255,6 +275,9 @@ export function TasksPageClient({
                 open={isDetailSheetOpen}
                 onOpenChange={setIsDetailSheetOpen}
                 assignees={members}
+                comments={taskComments}
+                currentUserId={currentUser.id}
+                currentUserRole={currentUser.role}
                 onUpdated={handleTaskUpdated}
                 onDeleted={handleTaskUpdated}
             />

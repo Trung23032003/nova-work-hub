@@ -79,6 +79,10 @@ export default async function ProjectTasksPage({
             total={total}
             members={members}
             taskCounts={taskCounts}
+            currentUser={{
+                id: session.user.id,
+                role: session.user.role || "MEMBER",
+            }}
             initialFilters={{
                 status,
                 priority,
