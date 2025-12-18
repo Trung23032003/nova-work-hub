@@ -1083,24 +1083,226 @@ Remove-Item -Path "src/app/dashboard" -Recurse -Force
 
 **Mục tiêu:** CRUD Dự án, hiển thị danh sách và layout chi tiết dự án.
 
-### 3.1. Phía Server (Logic)
+### 3.1. Phía Server (Logic) ✅
 
-  - [ ] **Schema Validation:** Định nghĩa `CreateProjectSchema` trong `src/lib/zod-schemas.ts`.
-  - [ ] **Service:** Tạo `src/server/services/project.service.ts` (Hàm `getProjects`, `getProjectById`).
-  - [ ] **Server Action:** Tạo `src/actions/project.ts` (Hàm `createProject`, `updateProjectStatus`).
+> [!IMPORTANT]
+> **ĐÃ HOÀN THÀNH** - Backend logic cho Module Dự án
 
-### 3.2. Phía Client (Giao diện)
+---
 
-  - [ ] **Project List:** Tạo `src/app/(dashboard)/projects/page.tsx`. Sử dụng component `DataTable` của Shadcn hoặc Grid Card.
-  - [ ] **Create Project Modal:** Tạo form dùng `react-hook-form` + `zod` để gọi Server Action tạo dự án.
-  - [ ] **Project Detail Layout:** Tạo `src/app/(dashboard)/projects/[projectId]/layout.tsx`.
-      - Fetch thông tin dự án tại đây.
-      - Tạo Tab Navigation: *Overview | Tasks | Members | Settings*.
+#### 📁 File 1: Schema Validation
+
+| Thông tin | Chi tiết |
+|-----------|----------|
+| **File** | `src/lib/zod-schemas.ts` |
+| **Schema** | `CreateProjectSchema`, `UpdateProjectSchema` |
+
+**Đã có sẵn từ trước**, bao gồm:
+- `name`: Bắt buộc, tối đa 200 ký tự
+- `code`: Bắt buộc, chỉ chữ IN HOA, số và dấu `-`, regex `/^[A-Z0-9-]+$/`
+- `description`, `clientName`: Optional
+- `priority`: Enum `LOW | MEDIUM | HIGH | CRITICAL`
+- `startDate`, `dueDate`: Date (coerce từ string)
+- `pmId`: ID của Project Manager (bắt buộc)
+
+---
+
+#### 📁 File 2: Project Service
+
+| Thông tin | Chi tiết |
+|-----------|----------|
+| **File** | `src/server/services/project.service.ts` |
+| **Mục đích** | Logic truy vấn database cho Projects |
+
+**Các hàm đã implement:**
+
+| Hàm | Mô tả |
+|-----|-------|
+| `getProjects(options)` | Lấy danh sách projects với filter, sort, paginate |
+| `getProjectById(id)` | Lấy chi tiết project theo ID hoặc slug |
+| `canAccessProject(projectId, userId, userRole)` | Kiểm tra quyền truy cập |
+| `getProjectStats(projectId)` | Lấy thống kê (tasks theo status, members, hours) |
+
+**Types được export:**
+- `ProjectListItem` - Type cho item trong danh sách
+- `ProjectDetail` - Type cho trang chi tiết
+- `GetProjectsOptions` - Options cho filter/sort/paginate
+
+---
+
+#### 📁 File 3: Project Server Actions
+
+| Thông tin | Chi tiết |
+|-----------|----------|
+| **File** | `src/actions/project.ts` |
+| **Loại** | Server Actions (`"use server"`) |
+
+**Các hàm đã implement:**
+
+| Hàm | Mô tả | Authorization |
+|-----|-------|---------------|
+| `createProject(input)` | Tạo dự án mới | ADMIN, PM |
+| `updateProject(input)` | Cập nhật thông tin dự án | ADMIN, PM của project |
+| `updateProjectStatus(id, status)` | Đổi trạng thái dự án | ADMIN, PM của project |
+| `deleteProject(id)` | Xóa dự án | ADMIN only |
+| `addProjectMember(projectId, userId, role)` | Thêm thành viên | ADMIN, PM của project |
+| `removeProjectMember(projectId, userId)` | Xóa thành viên | ADMIN, PM của project |
+
+**Response type chuẩn:**
+```typescript
+type ActionResponse<T> = 
+  | { success: true; data: T; message?: string }
+  | { success: false; error: string };
+```
+
+**Cách sử dụng trong Client Component:**
+```tsx
+"use client";
+import { createProject } from "@/actions/project";
+import { toast } from "sonner";
+
+async function handleSubmit(data: CreateProjectInput) {
+  const result = await createProject(data);
+  if (result.success) {
+    toast.success(result.message);
+    router.push(`/projects/${result.data.id}`);
+  } else {
+    toast.error(result.error);
+  }
+}
+```
+
+---
+
+#### ✅ Kết quả đạt được
+
+- ✅ `CreateProjectSchema` đã có trong `zod-schemas.ts`
+- ✅ Project Service với 4 hàm query
+- ✅ 6 Server Actions cho CRUD + member management
+- ✅ Type-safe với Prisma.ProjectGetPayload
+- ✅ Authorization đầy đủ (ADMIN, PM, Member)
+- ✅ `npm run build` passed
+
+
+
+### 3.2. Phía Client (Giao diện) ✅
+
+> [!IMPORTANT]
+> **ĐÃ HOÀN THÀNH** - Giao diện Module Dự án
+
+---
+
+#### 📁 Cấu trúc files đã tạo
+
+```
+src/
+├── components/features/projects/
+│   ├── index.ts                    ← Barrel exports
+│   ├── project-card.tsx            ← Card hiển thị project
+│   ├── project-list.tsx            ← Grid danh sách projects
+│   └── create-project-dialog.tsx   ← Modal tạo project mới
+│
+└── app/(dashboard)/projects/
+    ├── page.tsx                    ← Server Component (data fetching)
+    ├── page-client.tsx             ← Client Component (interactive UI)
+    └── [projectId]/
+        ├── layout.tsx              ← Layout với header + tabs
+        ├── page.tsx                ← Tab Overview (stats, info)
+        ├── components/
+        │   ├── project-detail-header.tsx
+        │   └── project-tabs.tsx
+        ├── tasks/
+        │   └── page.tsx            ← Tab Tasks (placeholder)
+        ├── members/
+        │   └── page.tsx            ← Tab Members (danh sách)
+        └── settings/
+            └── page.tsx            ← Tab Settings (form edit)
+```
+
+---
+
+#### 📁 File 1: Project Components
+
+| Component | File | Mô tả |
+|-----------|------|-------|
+| `ProjectCard` | `project-card.tsx` | Card với status, priority, PM, task count, actions |
+| `ProjectList` | `project-list.tsx` | Grid layout + empty state + delete confirmation |
+| `CreateProjectDialog` | `create-project-dialog.tsx` | Modal form với react-hook-form + zod |
+
+**Lưu ý Zod v4 + @hookform/resolvers:**
+- Cần sử dụng explicit type cho form values
+- Cast resolver với `as any` để tránh type mismatch
+
+---
+
+#### 📁 File 2: Project List Page
+
+| Thông tin | Chi tiết |
+|-----------|----------|
+| **Server Component** | `page.tsx` - Fetch projects và users |
+| **Client Component** | `page-client.tsx` - Render UI tương tác |
+
+**Pattern Server/Client Component:**
+```tsx
+// page.tsx (Server - data fetching)
+const { projects } = await getProjects();
+return <ProjectsPageClient projects={projects} />;
+
+// page-client.tsx (Client - interactivity)
+"use client";
+export function ProjectsPageClient({ projects }) { ... }
+```
+
+---
+
+#### 📁 File 3: Project Detail Layout
+
+| Thông tin | Chi tiết |
+|-----------|----------|
+| **File** | `[projectId]/layout.tsx` |
+| **Features** | Auth check, fetch project, authorization, header, tabs |
+
+**URL Structure:**
+| URL | Tab | File |
+|-----|-----|------|
+| `/projects/[id]` | Tổng quan | `page.tsx` |
+| `/projects/[id]/tasks` | Công việc | `tasks/page.tsx` |
+| `/projects/[id]/members` | Thành viên | `members/page.tsx` |
+| `/projects/[id]/settings` | Cài đặt | `settings/page.tsx` |
+
+---
+
+#### 📁 File 4: Tab Overview
+
+Hiển thị:
+- ✅ 4 Stats cards (Tổng tasks, Tiến độ, Thành viên, Giờ log)
+- ✅ Phân bổ công việc theo status (progress bars)
+- ✅ Thông tin dự án (dates, client, budget, members)
+- ⬜ Recent activity (placeholder)
+
+---
+
+#### ✅ Kết quả đạt được
+
+- ✅ Trang danh sách projects với Grid Cards
+- ✅ Modal tạo project mới (react-hook-form + zod + server action)
+- ✅ Auto-generate code từ name
+- ✅ Delete confirmation dialog
+- ✅ Project detail layout với 4 tabs
+- ✅ Tab Overview với stats
+- ✅ Tab Members với danh sách thành viên
+- ✅ Tab Settings với form (placeholder functionality)
+- ✅ Tab Tasks (placeholder cho Giai đoạn 4)
+- ✅ Status dropdown thay đổi trực tiếp
+- ✅ Authorization check (chỉ PM/ADMIN edit)
+- ✅ `npm run build` passed
 
 ### ✅ Checkpoint GĐ 3
-- [ ] Tạo dự án mới thành công, hiển thị trong danh sách
-- [ ] Click vào dự án → vào trang detail với đầy đủ tabs
-- [ ] Loading skeleton hiển thị khi đang fetch data
+- [x] Tạo dự án mới thành công, hiển thị trong danh sách
+- [x] Click vào dự án → vào trang detail với đầy đủ tabs
+- [ ] Loading skeleton hiển thị khi đang fetch data (TODO)
+
+
 
 -----
 
