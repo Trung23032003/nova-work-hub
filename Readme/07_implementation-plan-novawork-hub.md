@@ -1632,6 +1632,22 @@ src/
 | Empty state | ✅ Hoạt động |
 | Scroll container | ✅ Hoạt động |
 | Edited indicator | ✅ Hoạt động |
+| **Real-time updates** | ✅ **Hoạt động** |
+
+### 🔧 Technical Fixes (Post-Integration)
+
+**Issue 1: Client-Server Boundary Violation**
+- **Problem:** Client Component import Server Service trực tiếp → DNS module error
+- **Solution:** Tạo `getTaskComments()` Server Action trong `comment.ts`
+- **Result:** Client components gọi Server Action thay vì import service
+
+**Issue 2: Comments không update real-time**
+- **Problem:** Sau add/edit/delete comment, phải đóng/mở lại sheet để thấy changes
+- **Solution:** 
+  - Tạo `refetchComments()` function trong `page-client.tsx`
+  - Truyền `onCommentsRefresh` callback từ page-client → TaskDetailSheet → TaskCommentSection
+  - TaskCommentSection gọi callback này thay vì `router.refresh()`
+- **Result:** Comments update immediately sau CRUD operations ✨
 
 ---
 
@@ -1650,6 +1666,8 @@ src/
 - [x] Comment UI component hoàn chỉnh
 - [x] **Tích hợp comment vào Task Detail Sheet**
 - [x] **All lint/type errors fixed**
+- [x] **Client-Server boundary violation fixed**
+- [x] **Real-time updates working**
 - [x] **Comment flow tested successfully**
 - [ ] Upload file thành công, hiển thị attachment (GĐ 5.2)
 - [ ] Log time và hiển thị tổng giờ (GĐ 5.3)

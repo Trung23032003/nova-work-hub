@@ -29,7 +29,7 @@ import {
 import type { TaskFiltersValue } from "@/components/features/tasks/task-filters";
 import type { TaskListItem } from "@/server/services/task.service";
 import type { CommentListItem } from "@/server/services/comment.service";
-import { getCommentsByTask } from "@/server/services/comment.service";
+import { getTaskComments } from "@/actions/comment";
 import type { TaskStatus } from "@prisma/client";
 
 // ============================================
@@ -136,13 +136,20 @@ export function TasksPageClient({
         setSelectedTask(task);
         setIsDetailSheetOpen(true);
 
-        // Fetch comments cho task
+        // Fetch comments cho task using Server Action
+        await refetchComments(task.id);
+    };
+
+    // Refetch comments - for real-time updates after CRUD
+    const refetchComments = async (taskId: string) => {
         try {
-            const { comments } = await getCommentsByTask({
-                taskId: task.id,
-                take: 50
-            });
-            setTaskComments(comments);
+            const result = await getTaskComments(taskId);
+            if (result.success) {
+                setTaskComments(result.data);
+            } else {
+                console.error("Failed to fetch comments:", result.error);
+                setTaskComments([]);
+            }
         } catch (error) {
             console.error("Failed to fetch comments:", error);
             setTaskComments([]);
@@ -278,6 +285,7 @@ export function TasksPageClient({
                 comments={taskComments}
                 currentUserId={currentUser.id}
                 currentUserRole={currentUser.role}
+                onCommentsRefresh={() => selectedTask && refetchComments(selectedTask.id)}
                 onUpdated={handleTaskUpdated}
                 onDeleted={handleTaskUpdated}
             />

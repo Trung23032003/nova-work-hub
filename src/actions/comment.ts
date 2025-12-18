@@ -257,3 +257,41 @@ export async function deleteComment(commentId: string): Promise<ActionResponse<n
         };
     }
 }
+
+/**
+ * Get comments for a task (Server Action for Client Components)
+ * 
+ * @param taskId - ID của task
+ * @returns Comments list hoặc error
+ */
+export async function getTaskComments(taskId: string) {
+    try {
+        // 1. Authenticate
+        const session = await auth();
+        if (!session?.user?.id) {
+            return { success: false as const, error: "Vui lòng đăng nhập" };
+        }
+
+        // 2. Validate taskId
+        if (!taskId) {
+            return { success: false as const, error: "Task ID là bắt buộc" };
+        }
+
+        // 3. Fetch comments
+        const { comments } = await getCommentsByTask({
+            taskId,
+            take: 50
+        });
+
+        return {
+            success: true as const,
+            data: comments,
+        };
+    } catch (error) {
+        console.error("Get task comments error:", error);
+        return {
+            success: false as const,
+            error: "Đã có lỗi xảy ra khi tải comments",
+        };
+    }
+}

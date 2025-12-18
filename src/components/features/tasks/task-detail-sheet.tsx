@@ -82,6 +82,7 @@ interface TaskDetailSheetProps {
     comments?: CommentListItem[];
     currentUserId?: string;
     currentUserRole?: string;
+    onCommentsRefresh?: () => void;
     onUpdated?: () => void;
     onDeleted?: () => void;
 }
@@ -132,6 +133,7 @@ export function TaskDetailSheet({
     comments = [],
     currentUserId,
     currentUserRole,
+    onCommentsRefresh,
     onUpdated,
     onDeleted,
 }: TaskDetailSheetProps) {
@@ -506,7 +508,7 @@ export function TaskDetailSheet({
                                 comments={comments}
                                 currentUserId={currentUserId}
                                 currentUserRole={currentUserRole}
-                                onCommentAdded={onUpdated}
+                                onCommentAdded={onCommentsRefresh}
                             />
                         </div>
                     )}
