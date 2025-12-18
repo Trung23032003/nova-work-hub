@@ -1669,12 +1669,12 @@ src/
  - [x] **Accessibility Fix:** Thêm `SheetTitle` và `SheetDescription` ẩn để fix lỗi Radix UI.
  - [x] **Real-time updates:** Tự động load lại danh sách file sau khi upload/xóa mà không cần reload trang.
 
-### 5.3. Chấm công (Log giờ) ⏸️
+### 5.3. Chấm công (Log giờ) ✅
 
-  - [ ] **Modal Log Time:** Tạo Dialog cho phép nhập số giờ và ghi chú.
-  - [ ] **Logic:** Server Action update bảng `TimeLog` và tính lại `totalHours` của Task (nếu cần hiển thị).
+  - [x] **Modal Log Time:** Tạo Dialog cho phép nhập số giờ và ghi chú.
+  - [x] **Logic:** Server Action update bảng `TimeLog` và tính lại `totalHours` của Task (nếu cần hiển thị).
 
-### ✅ Checkpoint GĐ 5.1 (Comments)
+### ✅ Checkpoint GĐ 5
 - [x] Comment backend (Service + Actions) hoạt động
 - [x] Comment UI component hoàn chỉnh
 - [x] **Tích hợp comment vào Task Detail Sheet**
@@ -1683,7 +1683,7 @@ src/
 - [x] **Real-time updates working**
 - [x] **Comment flow tested successfully**
 - [x] Upload file thành công, hiển thị attachment (GĐ 5.2)
-- [ ] Log time và hiển thị tổng giờ (GĐ 5.3)
+- [x] Log time và hiển thị tổng giờ (GĐ 5.3)
 
 -----
 

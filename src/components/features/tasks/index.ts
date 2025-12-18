@@ -19,3 +19,6 @@ export { TaskCommentSection } from "./task-comment-section";
 
 // File Upload
 export { FileUpload, AttachmentItem } from "./file-upload";
+
+// Time Log
+export { TaskTimeLogSection } from "./task-time-log-section";

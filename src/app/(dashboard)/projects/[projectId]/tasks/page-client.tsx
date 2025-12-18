@@ -31,7 +31,9 @@ import type { TaskListItem } from "@/server/services/task.service";
 import type { CommentListItem } from "@/server/services/comment.service";
 import { getTaskComments } from "@/actions/comment";
 import { getTaskAttachments } from "@/actions/attachment";
+import { getTaskTimeLogs } from "@/actions/timelog";
 import type { AttachmentListItem } from "@/server/services/attachment.service";
+import type { TimeLogListItem } from "@/server/services/timelog.service";
 import type { TaskStatus } from "@prisma/client";
 
 // ============================================
@@ -94,6 +96,7 @@ export function TasksPageClient({
     const [isDetailSheetOpen, setIsDetailSheetOpen] = useState(false);
     const [taskComments, setTaskComments] = useState<CommentListItem[]>([]);
     const [taskAttachments, setTaskAttachments] = useState<AttachmentListItem[]>([]);
+    const [taskTimeLogs, setTaskTimeLogs] = useState<TimeLogListItem[]>([]);
 
     // Tổng số tasks
     const totalTasks = Object.values(taskCounts).reduce((a, b) => a + b, 0);
@@ -139,10 +142,11 @@ export function TasksPageClient({
         setSelectedTask(task);
         setIsDetailSheetOpen(true);
 
-        // Fetch comments và attachments cùng lúc
+        // Fetch comments, attachments và time logs cùng lúc
         await Promise.all([
             refetchComments(task.id),
-            refetchAttachments(task.id)
+            refetchAttachments(task.id),
+            refetchTimeLogs(task.id)
         ]);
     };
 
@@ -175,6 +179,22 @@ export function TasksPageClient({
         } catch (error) {
             console.error("Failed to fetch attachments:", error);
             setTaskAttachments([]);
+        }
+    };
+
+    // Refetch time logs
+    const refetchTimeLogs = async (taskId: string) => {
+        try {
+            const result = await getTaskTimeLogs(taskId);
+            if (result.success) {
+                setTaskTimeLogs(result.data.logs);
+            } else {
+                console.error("Failed to fetch time logs:", result.error);
+                setTaskTimeLogs([]);
+            }
+        } catch (error) {
+            console.error("Failed to fetch time logs:", error);
+            setTaskTimeLogs([]);
         }
     };
 
@@ -306,10 +326,12 @@ export function TasksPageClient({
                 assignees={members}
                 comments={taskComments}
                 attachments={taskAttachments}
+                timeLogs={taskTimeLogs}
                 currentUserId={currentUser.id}
                 currentUserRole={currentUser.role}
                 onCommentsRefresh={() => selectedTask && refetchComments(selectedTask.id)}
                 onAttachmentsRefresh={() => selectedTask && refetchAttachments(selectedTask.id)}
+                onTimeLogsRefresh={() => selectedTask && refetchTimeLogs(selectedTask.id)}
                 onUpdated={handleTaskUpdated}
                 onDeleted={handleTaskUpdated}
             />

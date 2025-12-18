@@ -66,8 +66,10 @@ import type { CommentListItem } from "@/server/services/comment.service";
 import type { Priority, TaskStatus } from "@prisma/client";
 import { TaskCommentSection } from "./task-comment-section";
 import { FileUpload, AttachmentItem, type UploadedFile } from "./file-upload";
+import { TaskTimeLogSection } from "./task-time-log-section";
 import { createAttachment, deleteAttachment } from "@/actions/attachment";
 import type { AttachmentListItem } from "@/server/services/attachment.service";
+import type { TimeLogListItem } from "@/server/services/timelog.service";
 
 // ============================================
 // TYPES
@@ -87,10 +89,12 @@ interface TaskDetailSheetProps {
     assignees: AssigneeOption[];
     comments?: CommentListItem[];
     attachments?: AttachmentListItem[];
+    timeLogs?: TimeLogListItem[];
     currentUserId?: string;
     currentUserRole?: string;
     onCommentsRefresh?: () => void;
     onAttachmentsRefresh?: () => void;
+    onTimeLogsRefresh?: () => void;
     onUpdated?: () => void;
     onDeleted?: () => void;
 }
@@ -140,10 +144,12 @@ export function TaskDetailSheet({
     assignees,
     comments = [],
     attachments = [],
+    timeLogs = [],
     currentUserId,
     currentUserRole,
     onCommentsRefresh,
     onAttachmentsRefresh,
+    onTimeLogsRefresh,
     onUpdated,
     onDeleted,
 }: TaskDetailSheetProps) {
@@ -581,6 +587,21 @@ export function TaskDetailSheet({
                             </div>
                         )}
                     </div>
+
+                    <Separator />
+
+                    {/* Time Logging Section */}
+                    {currentUserId && currentUserRole && task && (
+                        <div className="space-y-3">
+                            <TaskTimeLogSection
+                                taskId={task.id}
+                                estimateHours={task.estimateHours}
+                                currentUserId={currentUserId}
+                                currentUserRole={currentUserRole}
+                                onRefresh={onTimeLogsRefresh}
+                            />
+                        </div>
+                    )}
 
                     <Separator />
 
