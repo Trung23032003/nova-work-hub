@@ -59,53 +59,486 @@ Backend Developer chịu trách nhiệm xây dựng và duy trì **phần "sau h
 
 TypeScript là ngôn ngữ chính của dự án. Bạn **PHẢI** nắm vững trước khi học các phần khác.
 
-#### Các khái niệm cần học:
+> 💡 **Tại sao TypeScript quan trọng?** TypeScript bổ sung **type annotations** (chú thích kiểu) vào JavaScript để giúp bạn phát hiện lỗi **trước khi chạy code**, không phải lúc production đang chạy!
+
+---
+
+#### 2.1.1. Basic Types - Các kiểu dữ liệu cơ bản
 
 ```typescript
-// 1. Basic Types
-let name: string = "Trung";
-let age: number = 22;
-let isActive: boolean = true;
+// ❌ JavaScript thuần - không biết biến này chứa gì
+let name = "Trung";
+name = 123; // JavaScript cho phép, nhưng đây là bug tiềm ẩn!
 
-// 2. Interface - Định nghĩa cấu trúc object
-interface User {
-  id: string;
-  email: string;
-  name: string;
-  role: "ADMIN" | "PM" | "MEMBER"; // Union Types
-  createdAt: Date;
+// ✅ TypeScript - khai báo rõ ràng kiểu dữ liệu
+let name: string = "Trung";
+name = 123; // ❌ LỖI! TypeScript báo ngay: Type 'number' is not assignable to type 'string'
+```
+
+**Các kiểu cơ bản bạn sẽ dùng hàng ngày:**
+
+| Kiểu | Mô tả | Ví dụ |
+|------|-------|-------|
+| `string` | Chuỗi văn bản | `"Hello"`, `'World'`, `` `Template` `` |
+| `number` | Số (integer + float) | `42`, `3.14`, `-100` |
+| `boolean` | Đúng/Sai | `true`, `false` |
+| `null` | Giá trị rỗng có chủ đích | `null` |
+| `undefined` | Chưa được gán giá trị | `undefined` |
+| `any` | Bất kỳ kiểu nào (⚠️ **tránh dùng**) | Mọi thứ |
+
+```typescript
+// Khai báo biến với type
+let userName: string = "Trung";
+let userAge: number = 22;
+let isActive: boolean = true;
+let avatar: string | null = null; // có thể là string HOẶC null
+
+// Array - Mảng
+let scores: number[] = [85, 90, 78];
+let names: string[] = ["An", "Bình", "Châu"];
+
+// Cách viết khác cho array (Generic syntax)
+let scores2: Array<number> = [85, 90, 78];
+```
+
+---
+
+#### 2.1.2. Interface - Định nghĩa "hình dạng" của Object
+
+**Interface** giống như một "bản thiết kế" mô tả object phải có những thuộc tính gì.
+
+**Tại sao cần Interface?**
+
+```typescript
+// ❌ Không dùng interface - dễ sai sót
+function createUser(user) {
+  // Không biết user có những field gì
+  // Dễ gõ sai tên field mà không biết
+  console.log(user.nmae); // Gõ sai "name" thành "nmae" - không có lỗi!
 }
 
-// 3. Type Aliases
-type UserRole = "ADMIN" | "PM" | "MEMBER";
-type UserId = string;
+// ✅ Dùng interface - an toàn hơn nhiều
+interface User {
+  id: string;
+  name: string;
+  email: string;
+}
 
-// 4. Generics - Rất quan trọng cho Prisma
+function createUser(user: User) {
+  console.log(user.nmae); // ❌ LỖI NGAY! Property 'nmae' does not exist on type 'User'
+  console.log(user.name); // ✅ OK
+}
+```
+
+**Cách viết Interface:**
+
+```typescript
+// Interface cơ bản
+interface User {
+  id: string;
+  name: string;
+  email: string;
+}
+
+// Optional property - dùng dấu ? (có thể có hoặc không)
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  avatar?: string;  // avatar có thể có hoặc không
+  bio?: string;     // bio cũng optional
+}
+
+// Readonly property - không thể thay đổi sau khi tạo
+interface User {
+  readonly id: string; // Không thể gán lại id
+  name: string;
+  email: string;
+}
+
+const user: User = { id: "123", name: "Trung", email: "trung@email.com" };
+user.id = "456";              // ❌ LỖI! Cannot assign to 'id' because it is a read-only property
+user.name = "Trung Updated";  // ✅ OK, name không readonly
+```
+
+**Nested Interface (Interface lồng nhau):**
+
+```typescript
+// Địa chỉ là một object riêng
+interface Address {
+  street: string;
+  city: string;
+  country: string;
+}
+
+// User có chứa Address
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  address: Address; // Nested interface
+}
+
+// Sử dụng
+const user: User = {
+  id: "1",
+  name: "Trung",
+  email: "trung@email.com",
+  address: {
+    street: "123 Nguyễn Huệ",
+    city: "TP.HCM",
+    country: "Việt Nam",
+  },
+};
+```
+
+---
+
+#### 2.1.3. Type Aliases - Đặt tên cho kiểu dữ liệu
+
+**Type** giống interface nhưng linh hoạt hơn, có thể đặt tên cho bất kỳ kiểu nào.
+
+```typescript
+// Type cho giá trị đơn giản
+type UserId = string;
+type Age = number;
+
+// Type cho Union (nhiều lựa chọn) - RẤT HAY DÙNG!
+type UserRole = "ADMIN" | "PM" | "MEMBER";
+type Status = "pending" | "approved" | "rejected";
+
+// Sử dụng
+let myRole: UserRole = "ADMIN";     // ✅ OK
+myRole = "SUPER_ADMIN";             // ❌ LỖI! Type '"SUPER_ADMIN"' is not assignable to type 'UserRole'
+
+// Type cho Object (giống interface)
+type User = {
+  id: UserId;       // Dùng type alias khác
+  name: string;
+  role: UserRole;   // Dùng union type
+};
+```
+
+**Interface vs Type - Khi nào dùng cái nào?**
+
+| Tình huống | Dùng | Lý do |
+|------------|------|-------|
+| Định nghĩa object shape | `interface` | Dễ extend, convention phổ biến |
+| Union types (`"A" \| "B" \| "C"`) | `type` | Interface không hỗ trợ |
+| Primitive alias (`type ID = string`) | `type` | Interface không hỗ trợ |
+| Extend/mở rộng | Cả hai đều được | - |
+
+```typescript
+// Extend Interface
+interface Animal {
+  name: string;
+}
+interface Dog extends Animal {
+  breed: string;
+}
+
+// Extend Type (dùng &)
+type Animal = {
+  name: string;
+};
+type Dog = Animal & {
+  breed: string;
+};
+```
+
+---
+
+#### 2.1.4. Generics - "Template" cho Types
+
+**Generics** cho phép bạn viết code **tái sử dụng** với nhiều kiểu dữ liệu khác nhau. Đây là khái niệm **RẤT QUAN TRỌNG** vì Prisma sử dụng Generics rất nhiều.
+
+**Vấn đề không có Generics:**
+
+```typescript
+// ❌ Phải viết nhiều hàm cho từng kiểu - lặp lại code!
+function getFirstNumber(arr: number[]): number | undefined {
+  return arr[0];
+}
+
+function getFirstString(arr: string[]): string | undefined {
+  return arr[0];
+}
+
+function getFirstUser(arr: User[]): User | undefined {
+  return arr[0];
+}
+
+// 😤 Logic giống nhau mà phải viết 3 lần!
+```
+
+**Giải pháp với Generics:**
+
+```typescript
+// ✅ Một hàm duy nhất, hoạt động với MỌI kiểu
 function getFirst<T>(arr: T[]): T | undefined {
   return arr[0];
 }
 
-// Sử dụng
-const firstUser = getFirst<User>(users);
+// T là "placeholder" - sẽ được thay thế khi gọi hàm
 
-// 5. Utility Types
-type PartialUser = Partial<User>;        // Tất cả fields optional
-type UserWithoutId = Omit<User, "id">;   // Bỏ field id
-type UserIdAndEmail = Pick<User, "id" | "email">; // Chỉ lấy id và email
+// Sử dụng - chỉ định T là gì
+const firstNumber = getFirst<number>([1, 2, 3]);     // T = number → trả về number | undefined
+const firstString = getFirst<string>(["a", "b"]);   // T = string → trả về string | undefined
+const firstUser = getFirst<User>(users);            // T = User → trả về User | undefined
 
-// 6. Type Guards
-function isAdmin(user: User): boolean {
-  return user.role === "ADMIN";
+// TypeScript tự suy luận kiểu (không cần viết <number>)
+const firstNumber2 = getFirst([1, 2, 3]); // TypeScript tự hiểu T = number
+```
+
+**Generics trong thực tế - Prisma:**
+
+```typescript
+// Prisma dùng Generics rất nhiều!
+// Khi bạn viết:
+const user = await prisma.user.findUnique({
+  where: { id: "123" },
+});
+// → TypeScript tự biết `user` có kiểu `User | null`
+
+// Với include:
+const userWithProjects = await prisma.user.findUnique({
+  where: { id: "123" },
+  include: { projects: true },
+});
+// → TypeScript tự biết `userWithProjects` có cả `projects` array!
+// → Đây là sức mạnh của Generics!
+```
+
+**Generic với Constraints (giới hạn):**
+
+```typescript
+// T phải có property "id" - nếu không sẽ báo lỗi
+function getItemById<T extends { id: string }>(items: T[], id: string): T | undefined {
+  return items.find((item) => item.id === id);
+}
+
+// Hoạt động với bất kỳ object nào có "id"
+interface User { id: string; name: string; }
+interface Product { id: string; price: number; }
+
+const user = getItemById(users, "user-1");       // ✅ OK - User có id
+const product = getItemById(products, "prod-1"); // ✅ OK - Product có id
+const number = getItemById([1, 2, 3], "1");      // ❌ LỖI! number không có property "id"
+```
+
+---
+
+#### 2.1.5. Utility Types - "Công cụ" biến đổi Types
+
+TypeScript cung cấp sẵn các utility types giúp bạn tạo types mới từ types có sẵn. Đây là những "công cụ" bạn sẽ dùng **HÀNG NGÀY**.
+
+**`Partial<T>` - Tất cả fields thành optional**
+
+```typescript
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+}
+
+// Khi UPDATE, không cần gửi tất cả fields
+type UpdateUserInput = Partial<User>;
+// → Tương đương với:
+// {
+//   id?: string;
+//   name?: string;
+//   email?: string;
+//   role?: string;
+// }
+
+function updateUser(id: string, data: Partial<User>) {
+  // Chỉ cần gửi những field muốn update
+}
+
+updateUser("123", { name: "New Name" }); // ✅ OK, chỉ update name
+updateUser("123", { role: "ADMIN" });    // ✅ OK, chỉ update role
+```
+
+**`Omit<T, Keys>` - Bỏ đi một số fields**
+
+```typescript
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  password: string;  // ⚠️ Không muốn trả về password!
+  createdAt: Date;
+}
+
+// Type cho response - không có password
+type UserResponse = Omit<User, "password">;
+// → Tương đương:
+// {
+//   id: string;
+//   name: string;
+//   email: string;
+//   createdAt: Date;
+// }
+
+// Type không có id và timestamps (dùng khi CREATE)
+type CreateUserInput = Omit<User, "id" | "createdAt">;
+```
+
+**`Pick<T, Keys>` - Chỉ lấy một số fields**
+
+```typescript
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  password: string;
+  role: string;
+  avatar: string;
+  bio: string;
+  createdAt: Date;
+}
+
+// Chỉ cần email và password cho login
+type LoginCredentials = Pick<User, "email" | "password">;
+// → Tương đương:
+// {
+//   email: string;
+//   password: string;
+// }
+
+// Profile preview chỉ cần một số thông tin
+type UserPreview = Pick<User, "id" | "name" | "avatar">;
+```
+
+**`Required<T>` - Tất cả fields thành bắt buộc**
+
+```typescript
+interface Config {
+  apiUrl?: string;
+  timeout?: number;
+  retries?: number;
+}
+
+// Đảm bảo tất cả config đều được set
+type FullConfig = Required<Config>;
+// → Tất cả fields không còn optional
+```
+
+---
+
+#### 2.1.6. Union Types & Type Guards
+
+**Union Types - "Hoặc này, hoặc kia"**
+
+```typescript
+// Biến có thể là string HOẶC number
+let id: string | number;
+id = "abc";   // ✅ OK
+id = 123;     // ✅ OK
+id = true;    // ❌ LỖI!
+
+// Pattern rất phổ biến cho API response
+type Result<T> = 
+  | { success: true; data: T }
+  | { success: false; error: string };
+
+function fetchUser(id: string): Result<User> {
+  try {
+    // ... fetch user
+    return { success: true, data: user };
+  } catch (err) {
+    return { success: false, error: "User not found" };
+  }
+}
+
+// Xử lý kết quả - TypeScript hiểu từng case!
+const result = fetchUser("123");
+if (result.success) {
+  // TypeScript biết result.data tồn tại và có kiểu User
+  console.log(result.data.name);
+} else {
+  // TypeScript biết result.error tồn tại
+  console.log(result.error);
 }
 ```
 
+**Type Guards - Kiểm tra kiểu tại runtime**
+
+```typescript
+// typeof guard - kiểm tra kiểu primitive
+function process(value: string | number) {
+  if (typeof value === "string") {
+    // → TypeScript biết value là string ở đây
+    console.log(value.toUpperCase());
+  } else {
+    // → TypeScript biết value là number ở đây
+    console.log(value.toFixed(2));
+  }
+}
+
+// "in" guard - kiểm tra property có tồn tại không
+interface Dog {
+  bark(): void;
+}
+
+interface Cat {
+  meow(): void;
+}
+
+function makeSound(animal: Dog | Cat) {
+  if ("bark" in animal) {
+    animal.bark(); // → TypeScript biết là Dog
+  } else {
+    animal.meow(); // → TypeScript biết là Cat
+  }
+}
+```
+
+---
+
+#### 📝 Bài tập thực hành TypeScript
+
+Để nắm vững các khái niệm trên, hãy thử làm các bài tập sau:
+
+**Bài 1: Tạo Interface cho Task Management**
+```typescript
+// TODO: Tạo interface Task với các fields:
+// - id: string (readonly)
+// - title: string
+// - description: string (optional)
+// - status: "TODO" | "IN_PROGRESS" | "DONE"
+// - priority: "LOW" | "MEDIUM" | "HIGH"
+// - assigneeId: string (optional)
+// - createdAt: Date
+// - updatedAt: Date
+```
+
+**Bài 2: Viết Generic Function**
+```typescript
+// TODO: Viết hàm findById<T> tìm item trong array theo id
+// Hint: T phải có property "id"
+```
+
+**Bài 3: Dùng Utility Types**
+```typescript
+// TODO: Từ interface Task ở Bài 1, tạo:
+// - CreateTaskInput (không có id, createdAt, updatedAt)
+// - UpdateTaskInput (tất cả optional trừ id)
+// - TaskPreview (chỉ có id, title, status)
+```
+
+---
+
 #### Thời gian học: **1-2 tuần**
 
-#### Checklist:
+#### ✅ Checklist kiểm tra kiến thức:
 - [ ] Hiểu sự khác nhau giữa `interface` và `type`
-- [ ] Biết cách dùng Generics
+- [ ] Biết khi nào dùng optional `?` và readonly
+- [ ] Viết được hàm với Generics `<T>`
 - [ ] Thành thạo Utility Types: `Partial`, `Omit`, `Pick`, `Required`
-- [ ] Hiểu Union Types và Intersection Types
+- [ ] Hiểu Union Types (`A | B`) và biết cách dùng Type Guards
+- [ ] Có thể đọc hiểu các type phức tạp trong Prisma
 
 ---
 
