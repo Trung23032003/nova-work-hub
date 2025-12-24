@@ -530,15 +530,232 @@ function makeSound(animal: Dog | Cat) {
 
 ---
 
-#### Thời gian học: **1-2 tuần**
+#### 📗 Lời giải bài tập
 
-#### ✅ Checklist kiểm tra kiến thức:
-- [ ] Hiểu sự khác nhau giữa `interface` và `type`
-- [ ] Biết khi nào dùng optional `?` và readonly
-- [ ] Viết được hàm với Generics `<T>`
-- [ ] Thành thạo Utility Types: `Partial`, `Omit`, `Pick`, `Required`
-- [ ] Hiểu Union Types (`A | B`) và biết cách dùng Type Guards
-- [ ] Có thể đọc hiểu các type phức tạp trong Prisma
+<details>
+<summary><strong>🔑 Bấm để xem lời giải Bài 1</strong></summary>
+
+```typescript
+// Bước 1: Định nghĩa các Union Types cho status và priority
+type TaskStatus = "TODO" | "IN_PROGRESS" | "DONE";
+type TaskPriority = "LOW" | "MEDIUM" | "HIGH";
+
+// Bước 2: Tạo interface Task
+interface Task {
+  readonly id: string;        // readonly - không thể thay đổi sau khi tạo
+  title: string;
+  description?: string;       // optional - có dấu ?
+  status: TaskStatus;         // dùng union type đã định nghĩa
+  priority: TaskPriority;
+  assigneeId?: string;        // optional
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Ví dụ sử dụng:
+const task: Task = {
+  id: "task-001",
+  title: "Học TypeScript",
+  status: "IN_PROGRESS",
+  priority: "HIGH",
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  // description và assigneeId không bắt buộc
+};
+
+// ❌ Lỗi vì id là readonly
+task.id = "new-id"; // Cannot assign to 'id' because it is a read-only property
+
+// ❌ Lỗi vì status không hợp lệ
+const badTask: Task = {
+  ...task,
+  status: "PENDING", // Type '"PENDING"' is not assignable to type 'TaskStatus'
+};
+```
+
+**Giải thích:**
+- `readonly` đảm bảo `id` không bị thay đổi sau khi task được tạo
+- `?` cho phép field là optional (có thể không truyền)
+- Union types (`"TODO" | "IN_PROGRESS" | "DONE"`) giới hạn giá trị hợp lệ
+
+</details>
+
+<details>
+<summary><strong>🔑 Bấm để xem lời giải Bài 2</strong></summary>
+
+```typescript
+// Cách 1: Generic với constraint inline
+function findById<T extends { id: string }>(
+  items: T[], 
+  id: string
+): T | undefined {
+  return items.find((item) => item.id === id);
+}
+
+// Cách 2: Định nghĩa interface riêng cho constraint (dễ tái sử dụng)
+interface HasId {
+  id: string;
+}
+
+function findById<T extends HasId>(items: T[], id: string): T | undefined {
+  return items.find((item) => item.id === id);
+}
+
+// Ví dụ sử dụng:
+interface User {
+  id: string;
+  name: string;
+  email: string;
+}
+
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+}
+
+const users: User[] = [
+  { id: "u1", name: "Trung", email: "trung@mail.com" },
+  { id: "u2", name: "An", email: "an@mail.com" },
+];
+
+const products: Product[] = [
+  { id: "p1", name: "Laptop", price: 1000 },
+  { id: "p2", name: "Mouse", price: 50 },
+];
+
+// ✅ Hoạt động với User
+const user = findById(users, "u1");
+// TypeScript biết user có kiểu User | undefined
+console.log(user?.name); // "Trung"
+
+// ✅ Hoạt động với Product
+const product = findById(products, "p2");
+// TypeScript biết product có kiểu Product | undefined
+console.log(product?.price); // 50
+
+// ❌ Lỗi với array không có id
+const numbers = [1, 2, 3];
+findById(numbers, "1"); 
+// Error: Type 'number' does not satisfy the constraint '{ id: string }'
+```
+
+**Giải thích:**
+- `T extends { id: string }` yêu cầu T phải có property `id` kiểu string
+- Hàm trả về `T | undefined` vì có thể không tìm thấy
+- TypeScript tự động suy luận kiểu T dựa vào argument truyền vào
+
+</details>
+
+<details>
+<summary><strong>🔑 Bấm để xem lời giải Bài 3</strong></summary>
+
+```typescript
+// Interface Task từ Bài 1
+type TaskStatus = "TODO" | "IN_PROGRESS" | "DONE";
+type TaskPriority = "LOW" | "MEDIUM" | "HIGH";
+
+interface Task {
+  readonly id: string;
+  title: string;
+  description?: string;
+  status: TaskStatus;
+  priority: TaskPriority;
+  assigneeId?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// CreateTaskInput: Không có id, createdAt, updatedAt
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+type CreateTaskInput = Omit<Task, "id" | "createdAt" | "updatedAt">;
+
+// Tương đương với:
+// {
+//   title: string;
+//   description?: string;
+//   status: TaskStatus;
+//   priority: TaskPriority;
+//   assigneeId?: string;
+// }
+
+// Ví dụ sử dụng:
+const newTask: CreateTaskInput = {
+  title: "Hoàn thành báo cáo",
+  status: "TODO",
+  priority: "HIGH",
+  // Không cần id, createdAt, updatedAt - server sẽ tự tạo
+};
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// UpdateTaskInput: Tất cả optional, nhưng phải có id
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+type UpdateTaskInput = Partial<Omit<Task, "id" | "createdAt">> & {
+  id: string; // id bắt buộc
+};
+
+// Cách khác dùng Pick + Partial:
+type UpdateTaskInput2 = Pick<Task, "id"> & 
+  Partial<Omit<Task, "id" | "createdAt" | "updatedAt">>;
+
+// Tương đương với:
+// {
+//   id: string;           // bắt buộc
+//   title?: string;       // optional
+//   description?: string; // optional
+//   status?: TaskStatus;  // optional
+//   priority?: TaskPriority; // optional
+//   assigneeId?: string;  // optional
+//   updatedAt?: Date;     // optional
+// }
+
+// Ví dụ sử dụng:
+const updateData: UpdateTaskInput = {
+  id: "task-001",         // bắt buộc - để biết update task nào
+  status: "DONE",         // chỉ update status
+  // Các field khác không cần
+};
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// TaskPreview: Chỉ có id, title, status
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+type TaskPreview = Pick<Task, "id" | "title" | "status">;
+
+// Tương đương với:
+// {
+//   id: string;        // readonly bị mất khi dùng Pick
+//   title: string;
+//   status: TaskStatus;
+// }
+
+// Ví dụ sử dụng - hiển thị danh sách task:
+const taskList: TaskPreview[] = [
+  { id: "t1", title: "Task 1", status: "TODO" },
+  { id: "t2", title: "Task 2", status: "IN_PROGRESS" },
+  { id: "t3", title: "Task 3", status: "DONE" },
+];
+
+// Render danh sách - chỉ cần 3 fields để hiển thị
+taskList.forEach((task) => {
+  console.log(`[${task.status}] ${task.title}`);
+});
+```
+
+**Giải thích:**
+- `Omit<T, K>`: Loại bỏ các keys K khỏi type T
+- `Partial<T>`: Biến tất cả fields thành optional
+- `Pick<T, K>`: Chỉ lấy các keys K từ type T
+- `A & B`: Intersection - kết hợp cả A và B (phải thỏa mãn cả hai)
+
+**Khi nào dùng cái nào:**
+| Use Case | Utility Type |
+|----------|--------------|
+| Tạo mới (CREATE) | `Omit` - loại bỏ id, timestamps |
+| Cập nhật (UPDATE) | `Partial` + `Omit` - tất cả optional trừ id |
+| Xem danh sách | `Pick` - chỉ lấy fields cần hiển thị |
+
+</details>
 
 ---
 
