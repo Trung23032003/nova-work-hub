@@ -2984,33 +2984,450 @@ export default function NewProjectPage() {
 
 ### 3.3. Zod Validation
 
-Zod là thư viện validation type-safe, tích hợp hoàn hảo với TypeScript.
+**Zod** là thư viện **validation schema-first** cho TypeScript. Nó cho phép bạn định nghĩa **schema** (cấu trúc dữ liệu) và tự động **validate** + **generate types**.
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                         ZOD WORKFLOW                                │
+│                                                                     │
+│   1. Định nghĩa Schema          2. TypeScript Type        3. Validate
+│   ┌─────────────────┐          ┌─────────────────┐      ┌──────────┐
+│   │ z.object({      │   infer  │ type User = {   │      │ schema   │
+│   │   name: z.      │ ──────►  │   name: string  │      │.safeParse│
+│   │     string()    │          │ }               │      │ (data)   │
+│   │ })              │          │                 │      │          │
+│   └─────────────────┘          └─────────────────┘      └──────────┘
+│         Schema                     TypeScript                Input
+│         (Runtime)                  (Compile-time)          Validation
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Tại sao dùng Zod?**
+
+| Lợi ích | Mô tả |
+|---------|-------|
+| **Type-safe** | TypeScript types tự động được infer từ schema |
+| **Runtime validation** | Validate dữ liệu khi chạy (không chỉ compile-time) |
+| **Zero dependencies** | Không phụ thuộc thư viện khác |
+| **Tích hợp hoàn hảo** | Works great với Next.js, React Hook Form, tRPC |
+| **Schema composition** | Dễ dàng kết hợp, extend, modify schemas |
+
+---
+
+#### 3.3.1. Primitive Types - Các kiểu cơ bản
 
 ```typescript
 import { z } from "zod";
 
-// Schema cơ bản
+// String
+const nameSchema = z.string();
+nameSchema.parse("Trung");        // ✅ "Trung"
+nameSchema.parse(123);            // ❌ Throws error
+
+// Number
+const ageSchema = z.number();
+ageSchema.parse(25);              // ✅ 25
+ageSchema.parse("25");            // ❌ Throws error
+
+// Boolean
+const isActiveSchema = z.boolean();
+
+// Date
+const dateSchema = z.date();
+
+// Literal - giá trị cố định
+const adminSchema = z.literal("ADMIN");
+adminSchema.parse("ADMIN");       // ✅
+adminSchema.parse("USER");        // ❌
+
+// Enum
+const roleSchema = z.enum(["ADMIN", "PM", "MEMBER"]);
+```
+
+---
+
+#### 3.3.2. String Validators
+
+```typescript
+import { z } from "zod";
+
+const emailSchema = z.string()
+  .email("Email không hợp lệ")
+  .min(5, "Email phải có ít nhất 5 ký tự")
+  .max(100, "Email không được quá 100 ký tự");
+
+const passwordSchema = z.string()
+  .min(8, "Mật khẩu phải có ít nhất 8 ký tự")
+  .max(100)
+  .regex(
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+    "Mật khẩu phải có chữ hoa, chữ thường và số"
+  );
+
+const urlSchema = z.string().url("URL không hợp lệ");
+const uuidSchema = z.string().uuid("UUID không hợp lệ");
+const cuidSchema = z.string().cuid("CUID không hợp lệ");
+
+// Các validators khác
+z.string().startsWith("https://");
+z.string().endsWith(".com");
+z.string().includes("@");
+z.string().trim();                        // Loại bỏ whitespace
+z.string().toLowerCase();
+z.string().toUpperCase();
+```
+
+---
+
+#### 3.3.3. Number Validators
+
+```typescript
+import { z } from "zod";
+
+const ageSchema = z.number()
+  .int("Tuổi phải là số nguyên")
+  .positive("Tuổi phải là số dương")
+  .min(18, "Phải từ 18 tuổi trở lên")
+  .max(120, "Tuổi không hợp lệ");
+
+const priceSchema = z.number()
+  .nonnegative("Giá không được âm")    // >= 0
+  .multipleOf(1000, "Giá phải là bội số của 1000");
+
+// Coerce - Tự động chuyển đổi string thành number
+const coercedNumber = z.coerce.number();
+coercedNumber.parse("42");              // ✅ 42 (number)
+coercedNumber.parse("abc");             // ❌ NaN → Error
+```
+
+---
+
+#### 3.3.4. Object Schema
+
+```typescript
+import { z } from "zod";
+
+// Định nghĩa Object schema
 const UserSchema = z.object({
-  email: z.string().email("Email không hợp lệ"),
-  name: z.string().min(2).max(50),
-  age: z.number().int().positive().optional(),
+  id: z.string().cuid(),
+  name: z.string().min(2),
+  email: z.string().email(),
+  age: z.number().optional(),           // Optional field
   role: z.enum(["ADMIN", "PM", "MEMBER"]),
+  createdAt: z.date().default(() => new Date()),
 });
 
-// Infer TypeScript type từ schema
+// ⭐ Infer TypeScript type từ schema
 type User = z.infer<typeof UserSchema>;
+// → {
+//     id: string;
+//     name: string;
+//     email: string;
+//     age?: number | undefined;
+//     role: "ADMIN" | "PM" | "MEMBER";
+//     createdAt: Date;
+//   }
 
-// Validate dữ liệu
-const result = UserSchema.safeParse(inputData);
+// Sử dụng
+const user = UserSchema.parse({
+  id: "clx123abc",
+  name: "Trung",
+  email: "trung@email.com",
+  role: "ADMIN",
+});
+```
+
+---
+
+#### 3.3.5. Schema Modifiers
+
+```typescript
+import { z } from "zod";
+
+// Optional - có thể undefined
+const optionalString = z.string().optional();
+// type: string | undefined
+
+// Nullable - có thể null  
+const nullableString = z.string().nullable();
+// type: string | null
+
+// Default - giá trị mặc định
+const defaultString = z.string().default("Guest");
+// parse(undefined) → "Guest"
+
+// Array
+const stringArray = z.array(z.string());
+const numbersArray = z.array(z.number()).min(1).max(10);
+
+// Object utilities
+const UserSchema = z.object({
+  name: z.string(),
+  email: z.string().email(),
+  password: z.string(),
+});
+
+// Partial - tất cả fields thành optional
+const PartialUser = UserSchema.partial();
+// type: { name?: string; email?: string; password?: string }
+
+// Pick - chỉ lấy một số fields
+const LoginSchema = UserSchema.pick({ email: true, password: true });
+// type: { email: string; password: string }
+
+// Omit - loại bỏ một số fields
+const PublicUser = UserSchema.omit({ password: true });
+// type: { name: string; email: string }
+
+// Extend - mở rộng schema
+const CreateUserSchema = UserSchema.extend({
+  confirmPassword: z.string(),
+});
+```
+
+---
+
+#### 3.3.6. Transform & Refine
+
+```typescript
+import { z } from "zod";
+
+// Transform - biến đổi dữ liệu sau khi validate
+const DateFromString = z.string()
+  .transform((str) => new Date(str));
+// Input: string → Output: Date
+
+const SlugSchema = z.string()
+  .transform((str) => str.toLowerCase().replace(/\s+/g, "-"));
+// "Hello World" → "hello-world"
+
+// Refine - validation custom
+const PasswordSchema = z.string()
+  .min(8)
+  .refine(
+    (password) => /[A-Z]/.test(password),
+    { message: "Phải có ít nhất 1 chữ hoa" }
+  )
+  .refine(
+    (password) => /[0-9]/.test(password),
+    { message: "Phải có ít nhất 1 số" }
+  );
+
+// SuperRefine - validation object với nhiều fields
+const RegisterSchema = z.object({
+  password: z.string().min(8),
+  confirmPassword: z.string(),
+}).superRefine((data, ctx) => {
+  if (data.password !== data.confirmPassword) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Mật khẩu xác nhận không khớp",
+      path: ["confirmPassword"],
+    });
+  }
+});
+```
+
+---
+
+#### 3.3.7. Validation Methods
+
+```typescript
+import { z } from "zod";
+
+const UserSchema = z.object({
+  name: z.string().min(2),
+  email: z.string().email(),
+});
+
+const input = { name: "T", email: "invalid" };
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// parse() - Throws error nếu invalid
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+try {
+  const user = UserSchema.parse(input);
+} catch (error) {
+  if (error instanceof z.ZodError) {
+    console.log(error.errors);
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// safeParse() - Không throw, trả về result (KHUYẾN NGHỊ)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const result = UserSchema.safeParse(input);
+
 if (result.success) {
   // result.data có type User
   console.log(result.data);
 } else {
-  // result.error chứa thông tin lỗi
+  // result.error có type ZodError
   console.log(result.error.errors);
+  // [
+  //   { path: ["name"], message: "String must contain at least 2 character(s)" },
+  //   { path: ["email"], message: "Invalid email" }
+  // ]
 }
+```
 
-// Schema nâng cao
+---
+
+#### 3.3.8. Tích hợp với Server Actions
+
+```typescript
+// src/actions/user.actions.ts
+"use server";
+
+import { z } from "zod";
+import { prisma } from "@/lib/prisma";
+
+// 1. Định nghĩa Schema
+const CreateUserSchema = z.object({
+  name: z.string()
+    .min(2, "Tên phải có ít nhất 2 ký tự")
+    .max(50, "Tên không được quá 50 ký tự"),
+  email: z.string()
+    .email("Email không hợp lệ")
+    .toLowerCase(),  // Tự động chuyển thành lowercase
+  password: z.string()
+    .min(8, "Mật khẩu phải có ít nhất 8 ký tự"),
+  role: z.enum(["ADMIN", "PM", "MEMBER"]).default("MEMBER"),
+});
+
+// 2. Infer type
+type CreateUserInput = z.infer<typeof CreateUserSchema>;
+
+// 3. Action với validation
+type ActionResult<T> = 
+  | { success: true; data: T }
+  | { success: false; error: string; field?: string };
+
+export async function createUser(
+  input: CreateUserInput
+): Promise<ActionResult<{ id: string }>> {
+  // Validate với safeParse
+  const validated = CreateUserSchema.safeParse(input);
+  
+  if (!validated.success) {
+    const firstError = validated.error.errors[0];
+    return {
+      success: false,
+      error: firstError.message,
+      field: firstError.path[0] as string,
+    };
+  }
+  
+  // validated.data đã được type-safe và transform
+  const user = await prisma.user.create({
+    data: validated.data,
+  });
+  
+  return { success: true, data: { id: user.id } };
+}
+```
+
+---
+
+#### 3.3.9. Tích hợp với React Hook Form
+
+```bash
+# Cài đặt thêm resolver
+npm install @hookform/resolvers
+```
+
+```typescript
+// components/RegisterForm.tsx
+"use client";
+
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+
+// Schema
+const RegisterSchema = z.object({
+  name: z.string().min(2, "Tên phải có ít nhất 2 ký tự"),
+  email: z.string().email("Email không hợp lệ"),
+  password: z.string().min(8, "Mật khẩu phải có ít nhất 8 ký tự"),
+  confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Mật khẩu xác nhận không khớp",
+  path: ["confirmPassword"],
+});
+
+type RegisterInput = z.infer<typeof RegisterSchema>;
+
+export function RegisterForm() {
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<RegisterInput>({
+    resolver: zodResolver(RegisterSchema),  // ← Tích hợp Zod
+  });
+  
+  async function onSubmit(data: RegisterInput) {
+    // data đã được validate
+    console.log(data);
+  }
+  
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <div>
+        <input {...register("name")} placeholder="Tên" className="w-full p-2 border rounded" />
+        {errors.name && <span className="text-red-500 text-sm">{errors.name.message}</span>}
+      </div>
+      
+      <div>
+        <input {...register("email")} type="email" placeholder="Email" className="w-full p-2 border rounded" />
+        {errors.email && <span className="text-red-500 text-sm">{errors.email.message}</span>}
+      </div>
+      
+      <div>
+        <input {...register("password")} type="password" placeholder="Mật khẩu" className="w-full p-2 border rounded" />
+        {errors.password && <span className="text-red-500 text-sm">{errors.password.message}</span>}
+      </div>
+      
+      <div>
+        <input {...register("confirmPassword")} type="password" placeholder="Xác nhận mật khẩu" className="w-full p-2 border rounded" />
+        {errors.confirmPassword && <span className="text-red-500 text-sm">{errors.confirmPassword.message}</span>}
+      </div>
+      
+      <button type="submit" disabled={isSubmitting} className="w-full bg-blue-500 text-white p-2 rounded">
+        {isSubmitting ? "Đang xử lý..." : "Đăng ký"}
+      </button>
+    </form>
+  );
+}
+```
+
+---
+
+#### 📝 Bài tập thực hành Zod
+
+**Bài 1: Tạo Schema cho Project**
+```typescript
+// TODO: Tạo CreateProjectSchema với:
+// - title: string, min 3, max 100
+// - description: string optional
+// - startDate: string transform thành Date
+// - members: array of cuid, min 1 member
+```
+
+**Bài 2: Validation với refine**
+```typescript
+// TODO: Tạo DateRangeSchema với:
+// - startDate: Date
+// - endDate: Date  
+// - Refine: endDate phải sau startDate
+```
+
+<details>
+<summary><strong>🔑 Bấm để xem lời giải Bài 1</strong></summary>
+
+```typescript
+import { z } from "zod";
+
 const CreateProjectSchema = z.object({
   title: z.string()
     .min(3, "Tiêu đề phải có ít nhất 3 ký tự")
@@ -3020,22 +3437,66 @@ const CreateProjectSchema = z.object({
   
   startDate: z.string()
     .transform((str) => new Date(str))
-    .refine((date) => date > new Date(), {
-      message: "Ngày bắt đầu phải lớn hơn ngày hiện tại",
+    .refine((date) => !isNaN(date.getTime()), {
+      message: "Ngày không hợp lệ",
     }),
   
-  members: z.array(z.string().cuid()).min(1, "Cần ít nhất 1 thành viên"),
+  members: z.array(z.string().cuid())
+    .min(1, "Cần ít nhất 1 thành viên"),
 });
 
-// Schema với điều kiện
-const LoginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(6),
-  rememberMe: z.boolean().default(false),
-});
+type CreateProjectInput = z.infer<typeof CreateProjectSchema>;
+// {
+//   title: string;
+//   description?: string | undefined;
+//   startDate: Date;
+//   members: string[];
+// }
 ```
 
-#### Thời gian học: **3 ngày**
+</details>
+
+<details>
+<summary><strong>🔑 Bấm để xem lời giải Bài 2</strong></summary>
+
+```typescript
+import { z } from "zod";
+
+const DateRangeSchema = z.object({
+  startDate: z.coerce.date(),  // Tự động chuyển string thành Date
+  endDate: z.coerce.date(),
+}).refine(
+  (data) => data.endDate > data.startDate,
+  {
+    message: "Ngày kết thúc phải sau ngày bắt đầu",
+    path: ["endDate"],  // Lỗi sẽ hiển thị ở field endDate
+  }
+);
+
+// Sử dụng
+const result = DateRangeSchema.safeParse({
+  startDate: "2024-01-15",
+  endDate: "2024-01-10",  // ❌ Trước startDate
+});
+
+if (!result.success) {
+  console.log(result.error.errors[0].message);
+  // "Ngày kết thúc phải sau ngày bắt đầu"
+}
+```
+
+</details>
+
+---
+
+#### ⏱️ Thời gian học: **3-5 ngày**
+
+| Ngày | Nội dung |
+|------|----------|
+| **Ngày 1** | Primitive types, String/Number validators |
+| **Ngày 2** | Object schema, modifiers (optional, default) |
+| **Ngày 3** | Transform, Refine, Union |
+| **Ngày 4-5** | Tích hợp với Server Actions và React Hook Form |
 
 ---
 
