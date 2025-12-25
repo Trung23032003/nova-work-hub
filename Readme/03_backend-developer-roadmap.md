@@ -3489,17 +3489,6 @@ if (!result.success) {
 
 ---
 
-#### ⏱️ Thời gian học: **3-5 ngày**
-
-| Ngày | Nội dung |
-|------|----------|
-| **Ngày 1** | Primitive types, String/Number validators |
-| **Ngày 2** | Object schema, modifiers (optional, default) |
-| **Ngày 3** | Transform, Refine, Union |
-| **Ngày 4-5** | Tích hợp với Server Actions và React Hook Form |
-
----
-
 ### 3.4. Authentication & Authorization với Auth.js v5
 
 **Authentication** (Xác thực) là một trong những kiến thức **quan trọng nhất** cho Backend Developer. Phần này sẽ giải thích chi tiết các khái niệm và cách triển khai trong dự án NovaWork Hub.
@@ -4182,17 +4171,6 @@ function AdminPanel() {
 ```
 
 </details>
-
----
-
-#### ⏱️ Thời gian học: **1-2 tuần**
-
-Trong thời gian này, bạn nên:
-- **Ngày 1-2:** Hiểu các khái niệm (Session, Token, JWT, OAuth)
-- **Ngày 3-4:** Cấu hình Auth.js với Credentials provider
-- **Ngày 5-6:** Thêm Google OAuth provider
-- **Ngày 7:** Implement Middleware bảo vệ routes
-- **Tuần 2:** Thực hành với các bài tập + xây dựng auth flow hoàn chỉnh
 
 ---
 
