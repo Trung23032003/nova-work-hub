@@ -9,9 +9,7 @@
 1. [Tổng quan về Backend Development](#1-tổng-quan-về-backend-development)
 2. [Kiến thức nền tảng bắt buộc](#2-kiến-thức-nền-tảng-bắt-buộc)
 3. [Kiến thức chuyên sâu cho dự án](#3-kiến-thức-chuyên-sâu-cho-dự-án)
-4. [Lộ trình học tập 3 tháng](#4-lộ-trình-học-tập-3-tháng)
-5. [Tài nguyên học tập](#5-tài-nguyên-học-tập)
-6. [Checklist đánh giá năng lực](#6-checklist-đánh-giá-năng-lực)
+4. [Tài nguyên học tập](#4-tài-nguyên-học-tập)
 
 ---
 
