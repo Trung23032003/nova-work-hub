@@ -1506,19 +1506,299 @@ const LoginSchema = z.object({
 
 ---
 
-### 3.4. Authentication với Auth.js v5
+### 3.4. Authentication & Authorization với Auth.js v5
 
-#### Cấu hình Auth.js:
+**Authentication** (Xác thực) là một trong những kiến thức **quan trọng nhất** cho Backend Developer. Phần này sẽ giải thích chi tiết các khái niệm và cách triển khai trong dự án NovaWork Hub.
+
+---
+
+#### 3.4.1. Các khái niệm cơ bản
+
+**🔐 Authentication vs Authorization**
+
+| Khái niệm | Câu hỏi | Ví dụ |
+|-----------|---------|-------|
+| **Authentication** (Xác thực) | "Bạn là ai?" | Đăng nhập bằng email/password |
+| **Authorization** (Phân quyền) | "Bạn được phép làm gì?" | ADMIN có thể xóa user, MEMBER thì không |
+
+```
+              Authentication Flow
+┌──────────┐    "Tôi là Trung"    ┌──────────┐
+│  Client  │ ──────────────────▶  │  Server  │
+│ (Browser)│                      │          │
+│          │  ✅ "Đúng rồi!"      │  Kiểm tra│
+│          │ ◀──────────────────  │  danh tính│
+└──────────┘                      └──────────┘
+```
+
+---
+
+#### 3.4.2. Session vs Token - Hai cách lưu trạng thái đăng nhập
+
+**🍪 Session-based Authentication**
+
+```
+              Session-based Flow
+┌──────────┐                        ┌──────────┐
+│  Client  │  1. Login (user/pass)  │  Server  │
+│          │ ─────────────────────▶ │          │
+│          │                        │  Tạo     │
+│          │  2. Set-Cookie:        │  Session │
+│          │     sessionId=abc123   │  ID lưu  │
+│          │ ◀───────────────────── │  vào DB  │
+│          │                        │          │
+│  Cookie  │  3. Request kèm cookie │          │
+│  lưu     │ ─────────────────────▶ │  Kiểm    │
+│  session │                        │  tra DB  │
+│  ID      │  4. Response           │          │
+│          │ ◀───────────────────── │          │
+└──────────┘                        └──────────┘
+```
+
+**Đặc điểm Session:**
+- **Session ID** lưu trong **cookie** của browser
+- Server phải **lưu session vào database/memory**
+- Phù hợp với **web truyền thống**
+- **Auth.js sử dụng cách này mặc định**
+
+**🎫 Token-based Authentication (JWT)**
+
+```
+              Token-based Flow (JWT)
+┌──────────┐                        ┌──────────┐
+│  Client  │  1. Login (user/pass)  │  Server  │
+│          │ ─────────────────────▶ │          │
+│          │                        │  Tạo JWT │
+│          │  2. Token: eyJhbGci... │  (không  │
+│          │ ◀───────────────────── │  lưu DB) │
+│          │                        │          │
+│  Lưu     │  3. Request kèm token  │          │
+│  Token   │     Authorization:     │  Giải mã │
+│  ở local │     Bearer eyJhbGci... │  Token   │
+│          │ ─────────────────────▶ │  để xác  │
+│          │                        │  thực    │
+│          │  4. Response           │          │
+│          │ ◀───────────────────── │          │
+└──────────┘                        └──────────┘
+```
+
+**Đặc điểm Token:**
+- Token lưu ở **client** (localStorage, cookie, memory)
+- Server **không cần lưu state** (stateless)
+- Phù hợp với **API, Mobile app, Microservices**
+
+**So sánh Session vs Token:**
+
+| Tiêu chí | Session | Token (JWT) |
+|----------|---------|-------------|
+| **Lưu trữ** | Server (DB/Redis) | Client (localStorage/cookie) |
+| **Stateful/Stateless** | Stateful | Stateless |
+| **Khả năng mở rộng** | Khó (cần sync session) | Dễ (không cần sync) |
+| **Bảo mật** | Tốt hơn (có thể revoke) | Khó revoke trước hạn |
+| **Phù hợp với** | Web truyền thống | API, Mobile, Microservices |
+| **Auth.js** | ✅ Mặc định | ✅ Hỗ trợ |
+
+---
+
+#### 3.4.3. JWT (JSON Web Token) là gì?
+
+JWT là một **chuỗi mã hóa** chứa thông tin user, có thể được **xác minh** mà không cần tra cứu database.
+
+**Cấu trúc JWT:**
+```
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IlRydW5nIn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+       │                                      │                                │
+   ┌───▼───┐                           ┌──────▼──────┐                  ┌───────▼───────┐
+   │HEADER │                           │   PAYLOAD   │                  │   SIGNATURE   │
+   │{      │                           │{            │                  │HMACSHA256(    │
+   │ "alg":│                           │ "sub":"123",│                  │  header +     │
+   │ "HS256│                           │ "name":"Trung"│                │  payload,     │
+   │ "typ":│                           │ "role":"ADMIN"│                │  secret_key   │
+   │ "JWT" │                           │ "exp":16234..│                 │)              │
+   │}      │                           │}            │                  │               │
+   └───────┘                           └─────────────┘                  └───────────────┘
+   Thuật toán                          Dữ liệu user                     Chữ ký xác thực
+```
+
+**JWT Payload thường chứa:**
+```typescript
+{
+  "sub": "user-123",           // Subject - ID của user
+  "name": "Trung Đặng",        // Tên user
+  "email": "trung@email.com",  // Email
+  "role": "ADMIN",             // Vai trò
+  "iat": 1703500000,           // Issued At - thời điểm tạo
+  "exp": 1703586400            // Expiration - hết hạn
+}
+```
+
+---
+
+#### 3.4.4. Đăng ký (Register)
+
+**Flow đăng ký user mới:**
+
+```typescript
+// src/actions/auth.actions.ts
+"use server";
+
+import { prisma } from "@/lib/prisma";
+import bcrypt from "bcryptjs";
+import { z } from "zod";
+
+// 1. Schema validation
+const RegisterSchema = z.object({
+  email: z.string().email("Email không hợp lệ"),
+  password: z.string().min(6, "Mật khẩu phải có ít nhất 6 ký tự"),
+  name: z.string().min(2, "Tên phải có ít nhất 2 ký tự"),
+});
+
+export async function register(input: z.infer<typeof RegisterSchema>) {
+  try {
+    // 2. Validate input
+    const validatedData = RegisterSchema.safeParse(input);
+    if (!validatedData.success) {
+      return { success: false, error: validatedData.error.errors[0].message };
+    }
+
+    const { email, password, name } = validatedData.data;
+
+    // 3. Kiểm tra email đã tồn tại chưa
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (existingUser) {
+      return { success: false, error: "Email đã được sử dụng" };
+    }
+
+    // 4. Hash password (KHÔNG BAO GIỜ lưu password gốc!)
+    const hashedPassword = await bcrypt.hash(password, 12);
+    // 12 = salt rounds - số vòng mã hóa, càng cao càng an toàn nhưng chậm hơn
+
+    // 5. Tạo user trong database
+    const user = await prisma.user.create({
+      data: {
+        email,
+        name,
+        password: hashedPassword,
+        role: "MEMBER", // Role mặc định
+      },
+    });
+
+    // 6. (Optional) Gửi email xác thực
+    // await sendVerificationEmail(user.email);
+
+    return { success: true, userId: user.id };
+  } catch (error) {
+    console.error("Register error:", error);
+    return { success: false, error: "Đã có lỗi xảy ra" };
+  }
+}
+```
+
+**⚠️ Lưu ý quan trọng về Password:**
+- **KHÔNG BAO GIỜ** lưu password dạng plain text
+- **LUÔN** sử dụng hashing algorithm như **bcrypt**, **argon2**
+- **Salt rounds** từ 10-12 là phù hợp cho hầu hết ứng dụng
+
+---
+
+#### 3.4.5. Đăng nhập thường (Credentials)
+
+**Flow đăng nhập với email/password:**
+
+```typescript
+// src/actions/auth.actions.ts
+"use server";
+
+import { signIn } from "@/lib/auth";
+import { AuthError } from "next-auth";
+
+export async function login(email: string, password: string) {
+  try {
+    await signIn("credentials", {
+      email,
+      password,
+      redirectTo: "/dashboard",
+    });
+    
+    return { success: true };
+  } catch (error) {
+    if (error instanceof AuthError) {
+      switch (error.type) {
+        case "CredentialsSignin":
+          return { success: false, error: "Email hoặc mật khẩu không đúng" };
+        default:
+          return { success: false, error: "Đã có lỗi xảy ra" };
+      }
+    }
+    throw error; // Re-throw để Next.js xử lý redirect
+  }
+}
+```
+
+---
+
+#### 3.4.6. Đăng nhập bằng Google (OAuth)
+
+**OAuth 2.0** = Cho phép đăng nhập thông qua bên thứ 3 (Google, Facebook, GitHub...)
+
+```
+                    OAuth Flow (Đăng nhập Google)
+    
+┌──────────┐        ┌──────────┐        ┌──────────┐
+│   User   │        │  Your    │        │  Google  │
+│ (Browser)│        │  Server  │        │  Server  │
+└────┬─────┘        └────┬─────┘        └────┬─────┘
+     │                   │                   │
+     │ 1. Click "Login   │                   │
+     │    with Google"   │                   │
+     │──────────────────▷│                   │
+     │                   │                   │
+     │ 2. Redirect to    │                   │
+     │    Google login   │                   │
+     │◁──────────────────│                   │
+     │                   │                   │
+     │ 3. User đăng nhập │                   │
+     │    và cho phép    │                   │
+     │──────────────────────────────────────▷│
+     │                   │                   │
+     │ 4. Redirect về    │                   │
+     │    app với code   │                   │
+     │◁──────────────────────────────────────│
+     │                   │                   │
+     │ 5. Gửi code       │                   │
+     │──────────────────▷│                   │
+     │                   │ 6. Đổi code lấy   │
+     │                   │    access token   │
+     │                   │──────────────────▷│
+     │                   │                   │
+     │                   │ 7. Trả về user    │
+     │                   │    info           │
+     │                   │◁──────────────────│
+     │                   │                   │
+     │ 8. Tạo session,   │                   │
+     │    trả về user    │                   │
+     │◁──────────────────│                   │
+```
+
+**Cấu hình Google Provider trong Auth.js:**
 
 ```typescript
 // src/lib/auth.ts
 import NextAuth from "next-auth";
+import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
 import { prisma } from "./prisma";
 import bcrypt from "bcryptjs";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
+    // 🌐 Provider 1: Google OAuth
+    Google({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    }),
+    
+    // 🔑 Provider 2: Email/Password
     Credentials({
       name: "credentials",
       credentials: {
@@ -1556,13 +1836,44 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
     }),
   ],
+  
   callbacks: {
-    async jwt({ token, user }) {
+    // Thêm thông tin vào JWT token
+    async jwt({ token, user, account }) {
       if (user) {
         token.role = user.role;
       }
+      
+      // Xử lý khi đăng nhập bằng OAuth
+      if (account?.provider === "google") {
+        // Tìm hoặc tạo user từ Google account
+        const existingUser = await prisma.user.findUnique({
+          where: { email: token.email! },
+        });
+        
+        if (!existingUser) {
+          // Tạo user mới nếu chưa tồn tại
+          const newUser = await prisma.user.create({
+            data: {
+              email: token.email!,
+              name: token.name!,
+              avatar: token.picture,
+              role: "MEMBER",
+              // Không cần password cho OAuth users
+            },
+          });
+          token.role = newUser.role;
+          token.sub = newUser.id;
+        } else {
+          token.role = existingUser.role;
+          token.sub = existingUser.id;
+        }
+      }
+      
       return token;
     },
+    
+    // Thêm thông tin vào session
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.sub!;
@@ -1571,13 +1882,32 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       return session;
     },
   },
+  
   pages: {
     signIn: "/login",
+    error: "/login", // Redirect về login nếu có lỗi
   },
 });
 ```
 
-#### Middleware bảo vệ routes:
+**Cấu hình Google OAuth:**
+
+1. Truy cập [Google Cloud Console](https://console.cloud.google.com/)
+2. Tạo project mới hoặc chọn project có sẵn
+3. Vào **APIs & Services** > **Credentials**
+4. Tạo **OAuth 2.0 Client ID**
+5. Thêm Authorized redirect URI: `http://localhost:3000/api/auth/callback/google`
+6. Copy `Client ID` và `Client Secret` vào file `.env`:
+
+```env
+# .env.local
+GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=your-client-secret
+```
+
+---
+
+#### 3.4.7. Middleware bảo vệ Routes
 
 ```typescript
 // src/middleware.ts
@@ -1587,8 +1917,9 @@ import { NextResponse } from "next/server";
 export default auth((req) => {
   const { nextUrl } = req;
   const isLoggedIn = !!req.auth;
+  const userRole = req.auth?.user?.role;
 
-  // Routes công khai
+  // Routes công khai - ai cũng truy cập được
   const publicRoutes = ["/login", "/register", "/"];
   
   // Routes cần đăng nhập
@@ -1605,16 +1936,17 @@ export default auth((req) => {
     nextUrl.pathname.startsWith(route)
   );
 
-  // Chưa đăng nhập mà truy cập protected route
+  // ❌ Chưa đăng nhập mà truy cập protected route
   if (!isLoggedIn && isProtectedRoute) {
     return NextResponse.redirect(new URL("/login", nextUrl));
   }
 
-  // Không phải admin mà truy cập admin route
-  if (isAdminRoute && req.auth?.user?.role !== "ADMIN") {
+  // ❌ Không phải admin mà truy cập admin route
+  if (isAdminRoute && userRole !== "ADMIN") {
     return NextResponse.redirect(new URL("/dashboard", nextUrl));
   }
 
+  // ✅ Cho phép truy cập
   return NextResponse.next();
 });
 
@@ -1623,7 +1955,250 @@ export const config = {
 };
 ```
 
-#### Thời gian học: **1 tuần**
+---
+
+#### 3.4.8. Sử dụng Session trong Components
+
+**Trong Server Component:**
+```typescript
+// app/dashboard/page.tsx
+import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
+
+export default async function DashboardPage() {
+  const session = await auth();
+  
+  if (!session) {
+    redirect("/login");
+  }
+  
+  return (
+    <div>
+      <h1>Welcome, {session.user.name}!</h1>
+      <p>Role: {session.user.role}</p>
+    </div>
+  );
+}
+```
+
+**Trong Client Component:**
+```typescript
+// components/UserMenu.tsx
+"use client";
+
+import { useSession, signOut } from "next-auth/react";
+
+export function UserMenu() {
+  const { data: session, status } = useSession();
+  
+  if (status === "loading") {
+    return <div>Loading...</div>;
+  }
+  
+  if (!session) {
+    return <a href="/login">Đăng nhập</a>;
+  }
+  
+  return (
+    <div>
+      <span>{session.user.name}</span>
+      <button onClick={() => signOut()}>Đăng xuất</button>
+    </div>
+  );
+}
+```
+
+---
+
+#### 📝 Bài tập thực hành Authentication
+
+**Bài 1: Implement Register Form**
+```typescript
+// TODO: Tạo form đăng ký với các fields:
+// - Email (validate format)
+// - Password (validate min 6 ký tự)
+// - Confirm Password (validate khớp với password)
+// - Name (validate min 2 ký tự)
+```
+
+**Bài 2: Implement Role-based UI**
+```typescript
+// TODO: Hiển thị/ẩn các elements dựa trên role:
+// - ADMIN: Thấy tất cả menu items
+// - PM: Không thấy menu "Quản lý Users"
+// - MEMBER: Chỉ thấy menu "Dashboard" và "Tasks"
+```
+
+<details>
+<summary><strong>🔑 Bấm để xem lời giải Bài 1</strong></summary>
+
+```typescript
+// components/RegisterForm.tsx
+"use client";
+
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { register as registerUser } from "@/actions/auth.actions";
+
+const RegisterSchema = z.object({
+  email: z.string().email("Email không hợp lệ"),
+  password: z.string().min(6, "Mật khẩu phải có ít nhất 6 ký tự"),
+  confirmPassword: z.string(),
+  name: z.string().min(2, "Tên phải có ít nhất 2 ký tự"),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Mật khẩu xác nhận không khớp",
+  path: ["confirmPassword"],
+});
+
+type RegisterInput = z.infer<typeof RegisterSchema>;
+
+export function RegisterForm() {
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<RegisterInput>({
+    resolver: zodResolver(RegisterSchema),
+  });
+
+  async function onSubmit(data: RegisterInput) {
+    setIsLoading(true);
+    setError(null);
+
+    const result = await registerUser({
+      email: data.email,
+      password: data.password,
+      name: data.name,
+    });
+
+    if (!result.success) {
+      setError(result.error);
+    } else {
+      // Redirect to login page
+      window.location.href = "/login?registered=true";
+    }
+
+    setIsLoading(false);
+  }
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)}>
+      {error && <div className="error">{error}</div>}
+      
+      <input {...register("name")} placeholder="Tên" />
+      {errors.name && <span>{errors.name.message}</span>}
+      
+      <input {...register("email")} type="email" placeholder="Email" />
+      {errors.email && <span>{errors.email.message}</span>}
+      
+      <input {...register("password")} type="password" placeholder="Mật khẩu" />
+      {errors.password && <span>{errors.password.message}</span>}
+      
+      <input {...register("confirmPassword")} type="password" placeholder="Xác nhận mật khẩu" />
+      {errors.confirmPassword && <span>{errors.confirmPassword.message}</span>}
+      
+      <button type="submit" disabled={isLoading}>
+        {isLoading ? "Đang xử lý..." : "Đăng ký"}
+      </button>
+    </form>
+  );
+}
+```
+
+</details>
+
+<details>
+<summary><strong>🔑 Bấm để xem lời giải Bài 2</strong></summary>
+
+```typescript
+// components/Navigation.tsx
+"use client";
+
+import { useSession } from "next-auth/react";
+import Link from "next/link";
+
+type MenuItem = {
+  label: string;
+  href: string;
+  roles: string[]; // Roles được phép truy cập
+};
+
+const menuItems: MenuItem[] = [
+  { label: "Dashboard", href: "/dashboard", roles: ["ADMIN", "PM", "MEMBER"] },
+  { label: "Projects", href: "/projects", roles: ["ADMIN", "PM"] },
+  { label: "Tasks", href: "/tasks", roles: ["ADMIN", "PM", "MEMBER"] },
+  { label: "Team", href: "/team", roles: ["ADMIN", "PM"] },
+  { label: "Quản lý Users", href: "/admin/users", roles: ["ADMIN"] },
+  { label: "Cài đặt hệ thống", href: "/admin/settings", roles: ["ADMIN"] },
+];
+
+export function Navigation() {
+  const { data: session } = useSession();
+  const userRole = session?.user?.role || "MEMBER";
+
+  // Lọc menu items dựa trên role
+  const visibleMenuItems = menuItems.filter((item) =>
+    item.roles.includes(userRole)
+  );
+
+  return (
+    <nav>
+      <ul>
+        {visibleMenuItems.map((item) => (
+          <li key={item.href}>
+            <Link href={item.href}>{item.label}</Link>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
+}
+
+// Component để kiểm tra quyền
+export function RoleGate({
+  children,
+  allowedRoles,
+}: {
+  children: React.ReactNode;
+  allowedRoles: string[];
+}) {
+  const { data: session } = useSession();
+  const userRole = session?.user?.role;
+
+  if (!userRole || !allowedRoles.includes(userRole)) {
+    return null; // Không hiển thị gì
+  }
+
+  return <>{children}</>;
+}
+
+// Sử dụng RoleGate
+function AdminPanel() {
+  return (
+    <RoleGate allowedRoles={["ADMIN"]}>
+      <div>Chỉ ADMIN mới thấy panel này</div>
+    </RoleGate>
+  );
+}
+```
+
+</details>
+
+---
+
+#### ⏱️ Thời gian học: **1-2 tuần**
+
+Trong thời gian này, bạn nên:
+- **Ngày 1-2:** Hiểu các khái niệm (Session, Token, JWT, OAuth)
+- **Ngày 3-4:** Cấu hình Auth.js với Credentials provider
+- **Ngày 5-6:** Thêm Google OAuth provider
+- **Ngày 7:** Implement Middleware bảo vệ routes
+- **Tuần 2:** Thực hành với các bài tập + xây dựng auth flow hoàn chỉnh
 
 ---
 
