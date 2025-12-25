@@ -1583,57 +1583,99 @@ git commit -m "fix: resolve conflict between branch A and B"
 
 ---
 
-#### ⏱️ Thời gian học: **3-5 ngày**
-
-| Ngày | Nội dung |
-|------|----------|
-| **Ngày 1** | Clone, add, commit, push, pull |
-| **Ngày 2** | Branch, checkout, merge |
-| **Ngày 3** | Xử lý conflict, rebase |
-| **Ngày 4** | Git log, reset, revert |
-| **Ngày 5** | Thực hành workflow với dự án thật |
-
----
-
 ## 3. Kiến thức chuyên sâu cho dự án
 
 ### 3.1. Prisma ORM (⭐⭐⭐⭐⭐)
 
-Prisma là cầu nối giữa TypeScript và PostgreSQL. Đây là công cụ **quan trọng nhất** cho Backend.
+**Prisma** là một **ORM (Object-Relational Mapping)** hiện đại cho Node.js và TypeScript. Nó là **cầu nối** giữa code TypeScript và cơ sở dữ liệu, đây là công cụ **quan trọng nhất** cho Backend.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     TypeScript Code                         │
+│         prisma.user.findMany({ where: { role: "ADMIN" } })  │
+└─────────────────────────────┬───────────────────────────────┘
+                              │
+                              ▼ Prisma Client
+┌─────────────────────────────────────────────────────────────┐
+│                      Prisma ORM                             │
+│     Tự động chuyển đổi sang SQL query                       │
+│     SELECT * FROM users WHERE role = 'ADMIN'                │
+└─────────────────────────────┬───────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                      PostgreSQL                             │
+│                    (Database)                               │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Tại sao dùng Prisma?**
+
+| Lợi ích | Mô tả |
+|---------|-------|
+| **Type-safe** | TypeScript types được tự động generate từ schema |
+| **Auto-complete** | IDE hiểu và gợi ý fields, methods |
+| **Không cần viết SQL** | Dùng API thân thiện thay vì raw SQL |
+| **Migrations** | Quản lý thay đổi database dễ dàng |
+| **Relations** | Xử lý quan hệ giữa các bảng đơn giản |
+
+**3 thành phần chính của Prisma:**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     PRISMA ECOSYSTEM                         │
+├─────────────────┬─────────────────┬─────────────────────────┤
+│  Prisma Schema  │  Prisma Client  │  Prisma CLI             │
+│                 │                 │                         │
+│  📄 Định nghĩa  │  🔌 API để      │  ⚙️ Công cụ command    │
+│  cấu trúc DB    │  query database │  line                   │
+│                 │                 │                         │
+│  schema.prisma  │  @prisma/client │  npx prisma ...         │
+└─────────────────┴─────────────────┴─────────────────────────┘
+```
+
+---
 
 #### 3.1.1. Prisma Schema
 
-File `prisma/schema.prisma` định nghĩa cấu trúc database:
+File `prisma/schema.prisma` là **trái tim** của Prisma - định nghĩa toàn bộ cấu trúc database:
 
 ```prisma
-// Cấu hình datasource
+// ═══════════════════════════════════════════════════════════
+// 1. DATASOURCE - Kết nối database
+// ═══════════════════════════════════════════════════════════
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "postgresql"           // Loại DB: postgresql, mysql, sqlite
+  url      = env("DATABASE_URL")    // Connection string từ .env
 }
 
-// Cấu hình generator
+// ═══════════════════════════════════════════════════════════
+// 2. GENERATOR - Generate Prisma Client
+// ═══════════════════════════════════════════════════════════
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client-js"     // Generate JavaScript client
 }
 
-// Model User
+// ═══════════════════════════════════════════════════════════
+// 3. MODELS - Định nghĩa các bảng
+// ═══════════════════════════════════════════════════════════
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
+  // Các fields
+  id        String   @id @default(cuid())   // Primary key
+  email     String   @unique                 // Unique constraint
   name      String
   password  String
-  role      Role     @default(MEMBER)
-  avatar    String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  role      Role     @default(MEMBER)        // Enum với default
+  avatar    String?                          // Optional (nullable)
+  createdAt DateTime @default(now())         // Auto timestamp
+  updatedAt DateTime @updatedAt              // Auto update timestamp
 
   // Relations
-  projects  ProjectMember[]
+  projects  ProjectMember[]                  // One-to-Many
   tasks     Task[]
   comments  Comment[]
 
-  @@map("users") // Tên bảng trong DB
+  @@map("users")                             // Tên bảng trong DB
 }
 
 // Model Project
@@ -1654,7 +1696,9 @@ model Project {
   @@map("projects")
 }
 
-// Enum
+// ═══════════════════════════════════════════════════════════
+// 4. ENUMS - Giá trị cố định
+// ═══════════════════════════════════════════════════════════
 enum Role {
   ADMIN
   PM
@@ -1668,92 +1712,570 @@ enum ProjectStatus {
 }
 ```
 
-#### 3.1.2. Prisma Client - CRUD Operations
+**Các Attributes quan trọng:**
+
+| Attribute | Ý nghĩa | Ví dụ |
+|-----------|---------|-------|
+| `@id` | Primary Key | `id String @id` |
+| `@default()` | Giá trị mặc định | `@default(cuid())`, `@default(now())` |
+| `@unique` | Unique constraint | `email String @unique` |
+| `@updatedAt` | Tự động cập nhật timestamp | `updatedAt DateTime @updatedAt` |
+| `?` | Optional (nullable) | `avatar String?` |
+| `@@map()` | Đặt tên bảng trong DB | `@@map("users")` |
+| `@@unique()` | Composite unique | `@@unique([email, projectId])` |
+| `@@index()` | Tạo index | `@@index([email])` |
+
+**Các kiểu dữ liệu:**
+
+| Prisma Type | PostgreSQL | TypeScript |
+|-------------|------------|------------|
+| `String` | TEXT, VARCHAR | `string` |
+| `Int` | INTEGER | `number` |
+| `Float` | DOUBLE PRECISION | `number` |
+| `Boolean` | BOOLEAN | `boolean` |
+| `DateTime` | TIMESTAMP | `Date` |
+| `Json` | JSONB | `object` |
+
+---
+
+#### 3.1.2. Relations - Quan hệ giữa các Models
+
+**One-to-One (1-1):**
+```prisma
+model User {
+  id      String   @id @default(cuid())
+  profile Profile?                        // Optional 1-1
+}
+
+model Profile {
+  id     String @id @default(cuid())
+  bio    String
+  userId String @unique                   // FK + UNIQUE = 1-1
+  user   User   @relation(fields: [userId], references: [id])
+}
+```
+
+**One-to-Many (1-n):**
+```prisma
+model Project {
+  id    String @id @default(cuid())
+  title String
+  tasks Task[]                            // Một project có nhiều tasks
+}
+
+model Task {
+  id        String  @id @default(cuid())
+  title     String
+  projectId String                        // Foreign Key
+  project   Project @relation(fields: [projectId], references: [id])
+}
+```
+
+**Many-to-Many (n-n) - Explicit (Khuyến nghị):**
+```prisma
+model User {
+  id       String          @id @default(cuid())
+  projects ProjectMember[]
+}
+
+model Project {
+  id      String          @id @default(cuid())
+  members ProjectMember[]
+}
+
+// Bảng trung gian - có thể thêm thông tin về relation
+model ProjectMember {
+  id        String   @id @default(cuid())
+  userId    String
+  projectId String
+  role      String                         // Thêm thông tin về relation
+  joinedAt  DateTime @default(now())
+  
+  user    User    @relation(fields: [userId], references: [id])
+  project Project @relation(fields: [projectId], references: [id])
+  
+  @@unique([userId, projectId])            // 1 user chỉ join 1 project 1 lần
+}
+```
+
+---
+
+#### 3.1.3. Prisma Client - Khởi tạo
+
+**Best practice - Singleton pattern (tránh tạo nhiều connections):**
 
 ```typescript
+// lib/prisma.ts
 import { PrismaClient } from "@prisma/client";
 
-const prisma = new PrismaClient();
+const globalForPrisma = globalThis as unknown as {
+  prisma: PrismaClient | undefined;
+};
 
-// CREATE - Tạo mới
-const newUser = await prisma.user.create({
+export const prisma = globalForPrisma.prisma ?? new PrismaClient();
+
+if (process.env.NODE_ENV !== "production") {
+  globalForPrisma.prisma = prisma;
+}
+```
+
+---
+
+#### 3.1.4. CRUD Operations
+
+**CREATE - Tạo mới:**
+
+```typescript
+// Tạo 1 record
+const user = await prisma.user.create({
   data: {
     email: "trung@email.com",
-    name: "Trung Dang",
-    password: hashedPassword,
-    role: "MEMBER",
+    name: "Trung Đặng",
+    password: await bcrypt.hash("123456", 12),
   },
 });
 
-// READ - Đọc dữ liệu
-// Lấy một user
-const user = await prisma.user.findUnique({
-  where: { id: "user-id" },
+// Tạo kèm relations (nested create)
+const project = await prisma.project.create({
+  data: {
+    title: "NovaWork Hub",
+    members: {
+      create: [
+        { userId: "user-1", role: "OWNER" },
+        { userId: "user-2", role: "MEMBER" },
+      ],
+    },
+  },
+  include: {
+    members: true,
+  },
 });
 
-// Lấy user kèm relations
+// Tạo nhiều records cùng lúc
+const users = await prisma.user.createMany({
+  data: [
+    { email: "a@mail.com", name: "A", password: "..." },
+    { email: "b@mail.com", name: "B", password: "..." },
+  ],
+  skipDuplicates: true,  // Bỏ qua nếu đã tồn tại
+});
+```
+
+**READ - Đọc dữ liệu:**
+
+```typescript
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// findUnique - Tìm 1 record theo unique field
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const user = await prisma.user.findUnique({
+  where: { id: "user-123" },
+});
+
+const userByEmail = await prisma.user.findUnique({
+  where: { email: "trung@email.com" },
+});
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// findFirst - Tìm 1 record đầu tiên match điều kiện
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const admin = await prisma.user.findFirst({
+  where: { role: "ADMIN" },
+});
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// findMany - Tìm nhiều records
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const users = await prisma.user.findMany({
+  where: { role: "MEMBER" },
+  orderBy: { createdAt: "desc" },
+  take: 10,   // LIMIT
+  skip: 0,    // OFFSET (pagination)
+});
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// select - Chỉ lấy một số fields (giảm data transfer)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const userPreview = await prisma.user.findUnique({
+  where: { id: "user-123" },
+  select: {
+    id: true,
+    name: true,
+    avatar: true,
+    // Không lấy password, email
+  },
+});
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// include - Lấy kèm relations
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 const userWithProjects = await prisma.user.findUnique({
-  where: { id: "user-id" },
+  where: { id: "user-123" },
   include: {
     projects: {
       include: {
         project: true,
       },
     },
+    tasks: {
+      where: { status: "IN_PROGRESS" },
+      orderBy: { createdAt: "desc" },
+    },
   },
 });
+```
 
-// Lấy nhiều users với filter
-const admins = await prisma.user.findMany({
-  where: { role: "ADMIN" },
-  orderBy: { createdAt: "desc" },
-  take: 10, // LIMIT 10
-  skip: 0,  // OFFSET 0
+**WHERE Conditions - Điều kiện lọc:**
+
+```typescript
+const users = await prisma.user.findMany({
+  where: {
+    // Equals
+    role: "ADMIN",
+    
+    // Not equals
+    role: { not: "ADMIN" },
+    
+    // In array
+    role: { in: ["ADMIN", "PM"] },
+    
+    // String contains
+    email: { contains: "gmail" },
+    
+    // String starts/ends with
+    name: { startsWith: "Trung" },
+    
+    // Comparison (gt, gte, lt, lte)
+    age: { gte: 18 },     // >= 18
+    
+    // Date comparison
+    createdAt: { gte: new Date("2024-01-01") },
+    
+    // Null check
+    avatar: null,         // IS NULL
+    avatar: { not: null }, // IS NOT NULL
+    
+    // OR condition
+    OR: [
+      { role: "ADMIN" },
+      { role: "PM" },
+    ],
+    
+    // AND condition (mặc định)
+    AND: [
+      { role: "MEMBER" },
+      { email: { contains: "@company.com" } },
+    ],
+  },
+});
+```
+
+**UPDATE - Cập nhật:**
+
+```typescript
+// Update 1 record
+const user = await prisma.user.update({
+  where: { id: "user-123" },
+  data: { name: "New Name", role: "PM" },
 });
 
-// UPDATE - Cập nhật
-const updatedUser = await prisma.user.update({
-  where: { id: "user-id" },
+// Update nhiều records
+const count = await prisma.user.updateMany({
+  where: { role: "MEMBER" },
   data: { role: "PM" },
 });
+// count = { count: 5 } // Số records đã update
 
-// DELETE - Xóa
+// Update với increment/decrement
+const post = await prisma.post.update({
+  where: { id: "post-123" },
+  data: {
+    viewCount: { increment: 1 },
+  },
+});
+```
+
+**DELETE - Xóa:**
+
+```typescript
+// Xóa 1 record
 await prisma.user.delete({
-  where: { id: "user-id" },
+  where: { id: "user-123" },
 });
 
-// UPSERT - Tạo nếu chưa có, cập nhật nếu đã tồn tại
+// Xóa nhiều records
+const count = await prisma.user.deleteMany({
+  where: { role: "MEMBER" },
+});
+```
+
+**UPSERT - Tạo hoặc cập nhật:**
+
+```typescript
+// Nếu chưa có → create, đã có → update
 const user = await prisma.user.upsert({
   where: { email: "trung@email.com" },
-  update: { name: "Trung Updated" },
   create: {
     email: "trung@email.com",
     name: "Trung",
-    password: hashedPassword,
+    password: "...",
+  },
+  update: {
+    name: "Trung Updated",
   },
 });
 ```
 
-#### 3.1.3. Prisma Migrations
+---
 
-```bash
-# Tạo migration mới sau khi thay đổi schema
-npx prisma migrate dev --name add_user_avatar
+#### 3.1.5. Aggregations - Tính toán
 
-# Áp dụng migration cho production
-npx prisma migrate deploy
+```typescript
+// Count
+const userCount = await prisma.user.count({
+  where: { role: "ADMIN" },
+});
 
-# Reset database (XÓA TOÀN BỘ DỮ LIỆU)
-npx prisma migrate reset
+// Aggregate (sum, avg, min, max)
+const stats = await prisma.task.aggregate({
+  _count: true,
+  _avg: { priority: true },
+  _sum: { estimatedHours: true },
+});
 
-# Generate Prisma Client
-npx prisma generate
-
-# Mở Prisma Studio để xem database
-npx prisma studio
+// Group by
+const tasksByStatus = await prisma.task.groupBy({
+  by: ["status"],
+  _count: true,
+  orderBy: { _count: { status: "desc" } },
+});
+// [{ status: "TODO", _count: 10 }, { status: "DONE", _count: 5 }]
 ```
 
-#### Thời gian học: **2 tuần**
+---
+
+#### 3.1.6. Prisma Migrations
+
+**Migrations** là cách quản lý thay đổi cấu trúc database theo thời gian:
+
+```
+Schema thay đổi          Migration được tạo         Database được update
+     │                         │                          │
+     ▼                         ▼                          ▼
+┌─────────┐    prisma     ┌──────────────┐    prisma   ┌──────────┐
+│ schema  │ ────────────► │ migrations/  │ ──────────► │ Database │
+│.prisma  │  migrate dev  │ 2024_01_01/  │  migrate    │ PostgreSQL
+│         │               │ migration.sql│  deploy     │          │
+└─────────┘               └──────────────┘             └──────────┘
+```
+
+**Các lệnh Migration:**
+
+```bash
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Development - Tạo và apply migration
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+npx prisma migrate dev --name add_user_avatar
+# 1. So sánh schema với database
+# 2. Tạo migration SQL
+# 3. Apply migration
+# 4. Generate Prisma Client
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Production - Chỉ apply migration (không tạo mới)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+npx prisma migrate deploy
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Reset database (XÓA TOÀN BỘ DỮ LIỆU!)
+# ⚠️ Chỉ dùng trong development!
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+npx prisma migrate reset
+```
+
+**Các CLI commands khác:**
+
+```bash
+# Generate Prisma Client (sau khi sửa schema)
+npx prisma generate
+
+# Mở Prisma Studio (GUI xem database)
+npx prisma studio
+
+# Push schema trực tiếp (không tạo migration - chỉ prototype)
+npx prisma db push
+
+# Validate schema
+npx prisma validate
+
+# Format schema file
+npx prisma format
+```
+
+---
+
+#### 3.1.7. Best Practices
+
+**1. Xử lý lỗi đúng cách:**
+```typescript
+import { Prisma } from "@prisma/client";
+
+try {
+  await prisma.user.create({ data: { email: "trung@email.com", ... } });
+} catch (error) {
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    if (error.code === "P2002") {
+      // Unique constraint violation
+      throw new Error("Email đã tồn tại");
+    }
+    if (error.code === "P2025") {
+      // Record not found
+      throw new Error("Không tìm thấy record");
+    }
+  }
+  throw error;
+}
+```
+
+**2. Transaction - Đảm bảo tính toàn vẹn:**
+```typescript
+// Nếu 1 operation fail → rollback tất cả
+const result = await prisma.$transaction(async (tx) => {
+  const user = await tx.user.create({ data: { ... } });
+  const profile = await tx.profile.create({ 
+    data: { userId: user.id, ... } 
+  });
+  return { user, profile };
+});
+```
+
+**3. Pagination helper:**
+```typescript
+async function getPaginatedUsers(page: number, pageSize: number) {
+  const skip = (page - 1) * pageSize;
+  
+  const [users, total] = await prisma.$transaction([
+    prisma.user.findMany({
+      skip,
+      take: pageSize,
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.user.count(),
+  ]);
+  
+  return {
+    data: users,
+    pagination: {
+      page,
+      pageSize,
+      total,
+      totalPages: Math.ceil(total / pageSize),
+    },
+  };
+}
+```
+
+---
+
+#### 📝 Bài tập thực hành Prisma
+
+**Bài 1: Tạo Prisma Schema**
+```prisma
+// TODO: Tạo schema cho Blog với:
+// - Model Post (id, title, content, published, authorId, createdAt)
+// - Model Author (id, name, email, posts)
+// - Quan hệ: 1 Author có nhiều Posts
+```
+
+**Bài 2: Viết CRUD Operations**
+```typescript
+// TODO: Viết các hàm sau:
+// - createPost(title, content, authorId)
+// - getPublishedPosts(page, pageSize)
+// - updatePost(id, data)
+// - deletePost(id)
+```
+
+<details>
+<summary><strong>🔑 Bấm để xem lời giải Bài 1</strong></summary>
+
+```prisma
+model Author {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  createdAt DateTime @default(now())
+  
+  posts     Post[]                        // One-to-Many
+  
+  @@map("authors")
+}
+
+model Post {
+  id        String   @id @default(cuid())
+  title     String
+  content   String
+  published Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  authorId  String                        // Foreign Key
+  author    Author   @relation(fields: [authorId], references: [id])
+  
+  @@map("posts")
+}
+```
+
+</details>
+
+<details>
+<summary><strong>🔑 Bấm để xem lời giải Bài 2</strong></summary>
+
+```typescript
+import { prisma } from "@/lib/prisma";
+
+// CREATE
+async function createPost(title: string, content: string, authorId: string) {
+  return prisma.post.create({
+    data: { title, content, authorId },
+    include: { author: true },
+  });
+}
+
+// READ with pagination
+async function getPublishedPosts(page: number, pageSize: number) {
+  const skip = (page - 1) * pageSize;
+  
+  const [posts, total] = await prisma.$transaction([
+    prisma.post.findMany({
+      where: { published: true },
+      skip,
+      take: pageSize,
+      orderBy: { createdAt: "desc" },
+      include: { author: { select: { name: true } } },
+    }),
+    prisma.post.count({ where: { published: true } }),
+  ]);
+  
+  return { posts, total, totalPages: Math.ceil(total / pageSize) };
+}
+
+// UPDATE
+async function updatePost(id: string, data: { title?: string; content?: string; published?: boolean }) {
+  return prisma.post.update({
+    where: { id },
+    data,
+  });
+}
+
+// DELETE
+async function deletePost(id: string) {
+  return prisma.post.delete({
+    where: { id },
+  });
+}
+```
+
+</details>
 
 ---
 
