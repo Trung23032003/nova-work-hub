@@ -761,7 +761,11 @@ taskList.forEach((task) => {
 
 ### 2.2. SQL & Cơ sở dữ liệu quan hệ
 
-#### Các khái niệm cốt lõi:
+**SQL (Structured Query Language)** là ngôn ngữ chuẩn để làm việc với cơ sở dữ liệu quan hệ (Relational Database). Đây là kiến thức **nền tảng bắt buộc** cho mọi Backend Developer.
+
+---
+
+#### 2.2.1. Các khái niệm cốt lõi
 
 | Khái niệm | Mô tả | Ví dụ |
 |-----------|-------|-------|
@@ -772,48 +776,351 @@ taskList.forEach((task) => {
 | **Foreign Key (FK)** | Khóa ngoại, liên kết bảng | `project_id` trong bảng `tasks` |
 | **Index** | Đánh chỉ mục để truy vấn nhanh | Index trên `email` |
 
-#### Các loại quan hệ (Relationships):
-
+**📊 Table (Bảng)**
+- Là nơi **lưu trữ dữ liệu** có cấu trúc
+- Mỗi bảng đại diện cho một **thực thể** (entity) trong hệ thống
 ```
-1. ONE-TO-ONE (1-1)
-   User ──────── Profile
-   Một user có một profile
-
-2. ONE-TO-MANY (1-n)
-   Project ──────< Tasks
-   Một project có nhiều tasks
-
-3. MANY-TO-MANY (n-n)
-   Users >────────< Projects
-   Một user tham gia nhiều projects
-   Một project có nhiều users
+Bảng users     → Lưu thông tin người dùng
+Bảng projects  → Lưu thông tin dự án
+Bảng tasks     → Lưu thông tin công việc
 ```
 
-#### Các câu lệnh SQL cơ bản cần biết:
+**📋 Column (Cột)**
+- Là **thuộc tính/trường dữ liệu** của bảng
+- Mỗi column có một **kiểu dữ liệu** cụ thể (string, number, date, etc.)
+```
+Bảng users có các columns:
+├── id       (string - định danh)
+├── email    (string - email)
+├── name     (string - tên)
+└── role     (string - vai trò)
+```
+
+**📝 Row (Hàng/Bản ghi)**
+- Là **một record cụ thể** trong bảng
+- Mỗi row chứa dữ liệu cho tất cả các columns
+```
+| id      | email           | name   | role   |
+|---------|-----------------|--------|--------|
+| u-001   | trung@mail.com  | Trung  | ADMIN  |  ← Đây là 1 row
+| u-002   | an@mail.com     | An     | MEMBER | ← Đây là 1 row khác
+```
+
+**🔑 Primary Key (PK) - Khóa chính**
+- Là **định danh duy nhất** cho mỗi row trong bảng
+- **Không được trùng lặp** và **không được NULL**
+- Thường dùng: `id`, `uuid`, `cuid`
 
 ```sql
--- SELECT: Lấy dữ liệu
-SELECT * FROM users WHERE role = 'ADMIN';
-SELECT id, name, email FROM users ORDER BY created_at DESC LIMIT 10;
+CREATE TABLE users (
+  id VARCHAR(36) PRIMARY KEY,  -- ← Khóa chính
+  email VARCHAR(255),
+  name VARCHAR(100)
+);
+```
 
--- INSERT: Thêm dữ liệu
+**🔗 Foreign Key (FK) - Khóa ngoại**
+- Là **liên kết giữa 2 bảng**
+- FK trong bảng này **tham chiếu đến PK** của bảng kia
+- Đảm bảo **tính toàn vẹn dữ liệu** (referential integrity)
+
+```
+Bảng tasks:
+| id    | title        | project_id  |
+|-------|--------------|-------------|
+| t-001 | Code API     | p-001       | ← project_id là FK, tham chiếu đến projects.id
+| t-002 | Write docs   | p-001       |
+
+Bảng projects:
+| id    | title       |
+|-------|-------------|
+| p-001 | NovaWorkHub | ← PK của bảng projects
+```
+
+**📇 Index (Chỉ mục)**
+- **Tăng tốc độ truy vấn** dữ liệu
+- Giống như mục lục của sách - giúp tìm kiếm nhanh hơn
+- Nên đặt index trên các columns **hay được tìm kiếm/filter**
+
+```sql
+-- Tìm user bằng email rất thường xuyên → Tạo index
+CREATE INDEX idx_users_email ON users(email);
+
+-- Sau đó truy vấn này sẽ nhanh hơn nhiều:
+SELECT * FROM users WHERE email = 'trung@mail.com';
+```
+
+---
+
+#### 2.2.2. Các loại quan hệ (Relationships)
+
+**🔹 ONE-TO-ONE (1-1) - Một-Một**
+```
+User ──────── Profile
+```
+- **Một user** có **đúng một profile**
+- **Một profile** thuộc về **đúng một user**
+- **Ví dụ thực tế:** Mỗi user có 1 profile chứa thông tin chi tiết (bio, avatar, social links...)
+
+```sql
+-- Bảng users
+CREATE TABLE users (
+  id VARCHAR(36) PRIMARY KEY,
+  email VARCHAR(255) UNIQUE
+);
+
+-- Bảng profiles (FK user_id là UNIQUE để đảm bảo 1-1)
+CREATE TABLE profiles (
+  id VARCHAR(36) PRIMARY KEY,
+  user_id VARCHAR(36) UNIQUE,  -- ← UNIQUE đảm bảo 1-1
+  bio TEXT,
+  avatar VARCHAR(500),
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+```
+
+**🔹 ONE-TO-MANY (1-n) - Một-Nhiều**
+```
+Project ──────< Tasks
+```
+- **Một project** có **nhiều tasks**
+- **Một task** thuộc về **đúng một project**
+- **Quan hệ phổ biến nhất** trong thực tế
+
+```sql
+-- Bảng projects
+CREATE TABLE projects (
+  id VARCHAR(36) PRIMARY KEY,
+  title VARCHAR(255)
+);
+
+-- Bảng tasks (FK project_id không cần UNIQUE)
+CREATE TABLE tasks (
+  id VARCHAR(36) PRIMARY KEY,
+  title VARCHAR(255),
+  project_id VARCHAR(36),  -- ← Nhiều tasks có thể cùng project_id
+  FOREIGN KEY (project_id) REFERENCES projects(id)
+);
+```
+
+**🔹 MANY-TO-MANY (n-n) - Nhiều-Nhiều**
+```
+Users >────────< Projects
+```
+- **Một user** tham gia **nhiều projects**
+- **Một project** có **nhiều users**
+- Cần **bảng trung gian** (junction table) để liên kết
+
+```sql
+-- Bảng trung gian project_members
+CREATE TABLE project_members (
+  id VARCHAR(36) PRIMARY KEY,
+  user_id VARCHAR(36),
+  project_id VARCHAR(36),
+  role VARCHAR(50),  -- Có thể thêm thông tin về quan hệ
+  joined_at TIMESTAMP,
+  
+  FOREIGN KEY (user_id) REFERENCES users(id),
+  FOREIGN KEY (project_id) REFERENCES projects(id),
+  
+  -- Đảm bảo 1 user chỉ join 1 project 1 lần
+  UNIQUE (user_id, project_id)
+);
+```
+
+---
+
+#### 2.2.3. Các câu lệnh SQL cơ bản (CRUD)
+
+**📖 SELECT - Lấy dữ liệu (Read)**
+
+```sql
+-- Lấy TẤT CẢ columns, TẤT CẢ rows
+SELECT * FROM users;
+
+-- Lấy CHỈ ĐỊNH columns
+SELECT id, name, email FROM users;
+
+-- Lấy với ĐIỀU KIỆN
+SELECT * FROM users WHERE role = 'ADMIN';
+
+-- Lấy với SẮP XẾP và GIỚI HẠN
+SELECT id, name, email 
+FROM users 
+ORDER BY created_at DESC  -- Mới nhất trước
+LIMIT 10;                  -- Chỉ lấy 10 records
+```
+
+**✏️ INSERT - Thêm dữ liệu (Create)**
+
+```sql
+-- Thêm 1 record mới
 INSERT INTO users (id, name, email, role) 
 VALUES ('uuid-123', 'Trung', 'trung@email.com', 'MEMBER');
 
--- UPDATE: Cập nhật dữ liệu
-UPDATE users SET role = 'PM' WHERE id = 'uuid-123';
+-- Thêm nhiều records cùng lúc
+INSERT INTO users (id, name, email, role) VALUES 
+  ('uuid-124', 'An', 'an@email.com', 'MEMBER'),
+  ('uuid-125', 'Bình', 'binh@email.com', 'PM');
+```
 
--- DELETE: Xóa dữ liệu
+**🔄 UPDATE - Cập nhật dữ liệu**
+
+```sql
+-- Cập nhật role của user có id cụ thể
+UPDATE users 
+SET role = 'PM' 
+WHERE id = 'uuid-123';
+
+-- Cập nhật nhiều fields
+UPDATE users 
+SET role = 'ADMIN', updated_at = NOW() 
+WHERE email = 'trung@email.com';
+
+-- ⚠️ NGUY HIỂM: Không có WHERE sẽ update TẤT CẢ records!
+UPDATE users SET role = 'ADMIN';  -- Tất cả users thành ADMIN!
+```
+
+**🗑️ DELETE - Xóa dữ liệu**
+
+```sql
+-- Xóa user có id cụ thể
 DELETE FROM users WHERE id = 'uuid-123';
 
--- JOIN: Kết hợp bảng
+-- ⚠️ NGUY HIỂM: Không có WHERE sẽ xóa TẤT CẢ records!
+DELETE FROM users;  -- Xóa hết tất cả users!
+```
+
+---
+
+#### 2.2.4. JOIN - Kết hợp bảng
+
+**JOIN** được sử dụng để kết hợp dữ liệu từ nhiều bảng dựa trên quan hệ giữa chúng.
+
+```sql
+-- Lấy tên user và title project mà họ tham gia
 SELECT u.name, p.title 
 FROM users u
 JOIN project_members pm ON u.id = pm.user_id
 JOIN projects p ON pm.project_id = p.id;
+
+-- Kết quả:
+-- | name   | title        |
+-- |--------|--------------|
+-- | Trung  | NovaWorkHub  |
+-- | An     | NovaWorkHub  |
+-- | Trung  | ProjectXYZ   |
 ```
 
-#### Thời gian học: **1 tuần**
+**Các loại JOIN:**
+
+| Loại JOIN | Mô tả |
+|-----------|-------|
+| `INNER JOIN` | Chỉ lấy records có match ở **CẢ HAI** bảng |
+| `LEFT JOIN` | Lấy **TẤT CẢ** từ bảng trái, match từ bảng phải (NULL nếu không có) |
+| `RIGHT JOIN` | Lấy **TẤT CẢ** từ bảng phải, match từ bảng trái (NULL nếu không có) |
+| `FULL JOIN` | Lấy **TẤT CẢ** từ cả hai bảng |
+
+```sql
+-- LEFT JOIN: Lấy tất cả users, kể cả những người chưa join project nào
+SELECT u.name, p.title 
+FROM users u
+LEFT JOIN project_members pm ON u.id = pm.user_id
+LEFT JOIN projects p ON pm.project_id = p.id;
+
+-- Kết quả:
+-- | name   | title        |
+-- |--------|--------------|
+-- | Trung  | NovaWorkHub  |
+-- | An     | NovaWorkHub  |
+-- | Bình   | NULL         | ← Bình chưa join project nào
+```
+
+---
+
+#### 2.2.5. Ứng dụng trong NovaWork Hub
+
+Trong dự án **NovaWork Hub**, bạn sẽ làm việc với các bảng như:
+
+```
+📊 Database Schema:
+├── users          (id, email, name, password, role, avatar)
+├── projects       (id, title, description, status, start_date, end_date)
+├── project_members(id, user_id, project_id, role, joined_at)  ← Bảng trung gian
+├── tasks          (id, title, description, status, priority, project_id, assignee_id)
+└── comments       (id, content, task_id, user_id, created_at)
+
+Quan hệ:
+• users 1-n project_members n-1 projects  (Many-to-Many qua bảng trung gian)
+• projects 1-n tasks
+• tasks 1-n comments
+• users 1-n comments
+```
+
+---
+
+#### 📝 Bài tập thực hành SQL
+
+**Bài 1: Viết câu SELECT**
+```sql
+-- TODO: Viết câu truy vấn để:
+-- 1. Lấy tất cả users có role là 'PM'
+-- 2. Lấy 5 projects mới nhất
+-- 3. Đếm số lượng tasks theo từng status
+```
+
+**Bài 2: Viết câu JOIN**
+```sql
+-- TODO: Viết câu truy vấn để:
+-- 1. Lấy danh sách tasks kèm tên project và tên người được assign
+-- 2. Lấy số lượng thành viên của mỗi project
+```
+
+<details>
+<summary><strong>🔑 Bấm để xem lời giải</strong></summary>
+
+```sql
+-- Bài 1.1: Users có role là PM
+SELECT * FROM users WHERE role = 'PM';
+
+-- Bài 1.2: 5 projects mới nhất
+SELECT * FROM projects ORDER BY created_at DESC LIMIT 5;
+
+-- Bài 1.3: Đếm tasks theo status
+SELECT status, COUNT(*) as count 
+FROM tasks 
+GROUP BY status;
+
+-- Bài 2.1: Tasks kèm project và assignee
+SELECT 
+  t.id,
+  t.title as task_title,
+  p.title as project_title,
+  u.name as assignee_name
+FROM tasks t
+JOIN projects p ON t.project_id = p.id
+LEFT JOIN users u ON t.assignee_id = u.id;
+
+-- Bài 2.2: Số thành viên mỗi project
+SELECT 
+  p.title,
+  COUNT(pm.user_id) as member_count
+FROM projects p
+LEFT JOIN project_members pm ON p.id = pm.project_id
+GROUP BY p.id, p.title;
+```
+
+</details>
+
+---
+
+#### ⏱️ Thời gian học: **1 tuần**
+
+Trong tuần này, bạn nên:
+- **Ngày 1-2:** Học các khái niệm cơ bản (Table, Column, Row, Keys, Index)
+- **Ngày 3-4:** Thực hành CRUD (SELECT, INSERT, UPDATE, DELETE)
+- **Ngày 5-6:** Học về Relationships và JOIN
+- **Ngày 7:** Thực hành kết hợp với công cụ visual (MySQL Workbench, pgAdmin, DBeaver)
 
 ---
 
