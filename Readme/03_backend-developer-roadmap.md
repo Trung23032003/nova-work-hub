@@ -1114,39 +1114,484 @@ GROUP BY p.id, p.title;
 
 ---
 
-#### ⏱️ Thời gian học: **1 tuần**
+### 2.3. Git & Version Control
 
-Trong tuần này, bạn nên:
-- **Ngày 1-2:** Học các khái niệm cơ bản (Table, Column, Row, Keys, Index)
-- **Ngày 3-4:** Thực hành CRUD (SELECT, INSERT, UPDATE, DELETE)
-- **Ngày 5-6:** Học về Relationships và JOIN
-- **Ngày 7:** Thực hành kết hợp với công cụ visual (MySQL Workbench, pgAdmin, DBeaver)
+**Git** là hệ thống quản lý phiên bản (Version Control System - VCS) **phổ biến nhất thế giới**. Đây là công cụ **bắt buộc** mà mọi developer phải biết.
+
+**Tại sao cần Git?**
+- 📝 **Lưu lịch sử thay đổi**: Biết ai đã thay đổi gì, khi nào
+- 🔄 **Quay lại phiên bản cũ**: Nếu code bị hỏng, có thể rollback
+- 👥 **Làm việc nhóm**: Nhiều người có thể code cùng lúc mà không xung đột
+- 🌿 **Branching**: Phát triển tính năng mới mà không ảnh hưởng code chính
 
 ---
 
-### 2.3. Git & Version Control
+#### 2.3.1. Các khái niệm cốt lõi
+
+**📁 Repository (Repo)**
+```
+┌─────────────────┐                    ┌─────────────────┐
+│  Local Repo     │     push/pull      │  Remote Repo    │
+│  (Máy của bạn)  │ ◄────────────────► │  (GitHub)       │
+└─────────────────┘                    └─────────────────┘
+
+• Local Repository: Repo trên máy tính của bạn
+• Remote Repository: Repo trên server (GitHub, GitLab, Bitbucket)
+```
+
+**🌿 Branch (Nhánh)**
+```
+                    feature/login
+                   ┌──────────────────────────┐
+                  ╱                            ╲
+main ────●────●────●────●────────────────●────●────●────►
+                                         │
+                                   merge feature
+
+• Main/Master: Branch chính, chứa code ổn định
+• Feature branch: Branch để phát triển tính năng mới
+• Hotfix branch: Branch để sửa lỗi khẩn cấp
+```
+
+**🔄 Staging Area (Index)**
+```
+┌─────────────────┐    git add    ┌─────────────────┐   git commit   ┌─────────────────┐
+│ Working         │ ────────────► │ Staging Area    │ ─────────────► │ Repository      │
+│ Directory       │               │ (Index)         │                │ (.git)          │
+│                 │               │                 │                │                 │
+│ Các file đang   │               │ Các thay đổi    │                │ Lịch sử các     │
+│ làm việc        │               │ chuẩn bị commit │                │ commits         │
+└─────────────────┘               └─────────────────┘                └─────────────────┘
+```
+
+**📦 Commit**
+- Là một "snapshot" (ảnh chụp) của code tại một thời điểm
+- Mỗi commit có:
+  - **Hash ID**: Định danh duy nhất (vd: `a1b2c3d4`)
+  - **Message**: Mô tả thay đổi
+  - **Author**: Người tạo commit
+  - **Timestamp**: Thời gian tạo
+
+---
+
+#### 2.3.2. Các lệnh Git cơ bản
+
+**🚀 Khởi tạo & Clone**
 
 ```bash
-# Các lệnh cần thuộc lòng
-git clone <repo-url>          # Clone repo về máy
-git checkout -b feature/xyz   # Tạo branch mới
-git add .                     # Stage tất cả thay đổi
-git commit -m "feat: add..."  # Commit với message
-git push origin feature/xyz   # Push lên remote
-git pull origin main          # Lấy code mới nhất
-git merge main                # Merge branch main vào branch hiện tại
-git rebase main               # Rebase branch hiện tại lên main
+# Khởi tạo repo mới
+git init
+
+# Clone repo từ remote
+git clone <repo-url>
+git clone https://github.com/username/project.git
+
+# Clone và đặt tên thư mục khác
+git clone <repo-url> my-folder
 ```
 
-#### Quy ước Commit Message:
+**🌿 Làm việc với Branch**
+
+```bash
+# Xem tất cả branches
+git branch              # Branches local
+git branch -a           # Tất cả branches (cả remote)
+
+# Tạo branch mới
+git branch feature/login
+
+# Tạo và chuyển sang branch mới (cách nhanh)
+git checkout -b feature/login
+# Hoặc (Git 2.23+)
+git switch -c feature/login
+
+# Chuyển sang branch khác
+git checkout main
+git switch main
+
+# Xóa branch
+git branch -d feature/login        # Xóa branch đã merge
+git branch -D feature/login        # Xóa branch chưa merge (force)
 ```
-feat: thêm tính năng mới
-fix: sửa lỗi
-refactor: tái cấu trúc code
-docs: cập nhật tài liệu
-test: thêm/sửa test
-chore: công việc khác (config, dependencies)
+
+**📝 Stage & Commit**
+
+```bash
+# Xem trạng thái
+git status
+
+# Xem thay đổi
+git diff                           # Thay đổi chưa stage
+git diff --staged                  # Thay đổi đã stage
+
+# Stage thay đổi
+git add file.txt                   # Stage 1 file
+git add .                          # Stage tất cả
+git add -p                         # Stage từng phần (interactive)
+
+# Unstage
+git reset HEAD file.txt            # Unstage 1 file
+git restore --staged file.txt      # Cách mới (Git 2.23+)
+
+# Commit
+git commit -m "feat: add login feature"
+
+# Commit với message nhiều dòng
+git commit -m "feat: add login feature" -m "- Add login form" -m "- Add validation"
+
+# Sửa commit cuối (chưa push)
+git commit --amend -m "feat: updated message"
 ```
+
+**🔄 Đồng bộ với Remote**
+
+```bash
+# Thêm remote
+git remote add origin https://github.com/username/project.git
+
+# Xem remotes
+git remote -v
+
+# Lấy thay đổi từ remote (không merge)
+git fetch origin
+
+# Lấy và merge thay đổi từ remote
+git pull origin main
+
+# Push lên remote
+git push origin feature/login
+
+# Push branch mới lần đầu
+git push -u origin feature/login   # -u = set upstream
+```
+
+---
+
+#### 2.3.3. Merge & Rebase
+
+```bash
+# Merge branch vào branch hiện tại
+git checkout main
+git merge feature/login
+
+# Rebase (làm lại lịch sử commit)
+git checkout feature/login
+git rebase main
+```
+
+**Merge vs Rebase:**
+
+```
+MERGE: Giữ nguyên lịch sử, tạo merge commit
+       main: ──A──B──C────────M──
+                    ╲        ╱
+       feature:      D──E──F
+
+REBASE: Làm phẳng lịch sử, replay commits
+       main:    ──A──B──C──D'──E'──F'──
+       (feature được "di chuyển" lên đầu main)
+```
+
+| Tiêu chí | Merge | Rebase |
+|----------|-------|--------|
+| **Lịch sử** | Giữ nguyên, có merge commit | Làm phẳng, sạch sẽ hơn |
+| **An toàn** | An toàn hơn | Có thể gây conflict phức tạp |
+| **Khi nào dùng** | Merge feature vào main | Update feature với main mới nhất |
+| **Public branch** | ✅ Dùng được | ⚠️ Không nên (rewrite history) |
+
+---
+
+#### 2.3.4. Hoàn tác thay đổi
+
+```bash
+# Hoàn tác thay đổi chưa stage
+git checkout -- file.txt           # Cách cũ
+git restore file.txt               # Cách mới (Git 2.23+)
+
+# Hoàn tác commit cuối (giữ thay đổi trong staging)
+git reset --soft HEAD~1
+
+# Hoàn tác commit cuối (giữ thay đổi trong working dir)
+git reset --mixed HEAD~1           # Mặc định
+
+# Hoàn tác commit cuối (XÓA thay đổi)
+git reset --hard HEAD~1            # ⚠️ NGUY HIỂM!
+
+# Tạo commit đảo ngược (an toàn hơn reset)
+git revert <commit-hash>
+```
+
+**So sánh Reset modes:**
+
+| Mode | Staging Area | Working Directory | Khi nào dùng |
+|------|--------------|-------------------|--------------|
+| `--soft` | Giữ nguyên | Giữ nguyên | Muốn sửa commit message |
+| `--mixed` | Reset | Giữ nguyên | Muốn unstage và sửa lại |
+| `--hard` | Reset | Reset | Muốn xóa hoàn toàn ⚠️ |
+
+---
+
+#### 2.3.5. Xem lịch sử
+
+```bash
+# Xem lịch sử commits
+git log
+
+# Xem ngắn gọn (1 dòng mỗi commit)
+git log --oneline
+
+# Xem với graph (visualize branches)
+git log --oneline --graph --all
+
+# Xem n commits gần nhất
+git log -n 5
+
+# Xem commits của 1 file
+git log --follow file.txt
+
+# Xem ai sửa từng dòng (blame)
+git blame file.txt
+
+# Xem thay đổi của 1 commit
+git show <commit-hash>
+```
+
+---
+
+#### 2.3.6. Quy ước Commit Message (Conventional Commits)
+
+**Format chuẩn:**
+```
+<type>(<scope>): <description>
+
+[optional body]
+
+[optional footer]
+```
+
+**Các loại Type:**
+
+| Type | Mục đích | Ví dụ |
+|------|----------|-------|
+| `feat` | Thêm tính năng mới | `feat: add user registration` |
+| `fix` | Sửa lỗi | `fix: resolve login crash on iOS` |
+| `docs` | Cập nhật tài liệu | `docs: update API documentation` |
+| `style` | Format code (không đổi logic) | `style: format with prettier` |
+| `refactor` | Tái cấu trúc code | `refactor: extract validation logic` |
+| `test` | Thêm/sửa tests | `test: add unit tests for auth` |
+| `chore` | Công việc khác | `chore: update dependencies` |
+| `perf` | Cải thiện performance | `perf: optimize database queries` |
+| `ci` | CI/CD changes | `ci: add GitHub Actions workflow` |
+
+**Ví dụ commit message:**
+
+```bash
+# ✅ Tốt
+git commit -m "feat(auth): add Google OAuth login"
+git commit -m "fix(api): handle null response from server"
+git commit -m "docs: add installation guide to README"
+
+# ❌ Xấu - Không rõ ràng
+git commit -m "fix bug"
+git commit -m "update"
+git commit -m "asdfasdf"
+```
+
+---
+
+#### 2.3.7. Git Workflow trong dự án
+
+**GitHub Flow (Workflow đơn giản, phổ biến):**
+
+```
+main     ────●────●────●────●────●────●────────►
+              ↖        ↗         ↖       ↗
+feature        ──●──●──           ──●──●──
+                  PR                 PR
+```
+
+**Workflow thực tế trong NovaWork Hub:**
+
+```bash
+# 1. Lấy code mới nhất
+git checkout main
+git pull origin main
+
+# 2. Tạo branch mới cho feature/fix
+git checkout -b feature/add-task-api
+
+# 3. Code và commit (nhiều lần)
+git add .
+git commit -m "feat(task): add create task API"
+git commit -m "feat(task): add validation"
+
+# 4. Push lên remote
+git push -u origin feature/add-task-api
+
+# 5. Tạo Pull Request trên GitHub
+#    - Mô tả thay đổi
+#    - Request review từ team members
+
+# 6. Sau khi PR được approve và merge
+git checkout main
+git pull origin main
+
+# 7. Xóa branch local (dọn dẹp)
+git branch -d feature/add-task-api
+```
+
+---
+
+#### 2.3.8. Xử lý Conflict
+
+Khi 2 người cùng sửa 1 file, Git không biết chọn phiên bản nào → **Conflict**
+
+```
+<<<<<<< HEAD
+const greeting = "Hello World";     ← Code của bạn (current)
+=======
+const greeting = "Hi There";        ← Code của người khác (incoming)
+>>>>>>> feature/other-branch
+```
+
+**Cách xử lý:**
+
+```bash
+# 1. Khi merge/pull báo conflict
+git merge feature/login
+# Auto-merging file.js
+# CONFLICT (content): Merge conflict in file.js
+
+# 2. Mở file conflict, quyết định giữ code nào
+#    - Giữ code của bạn
+#    - Giữ code incoming
+#    - Kết hợp cả 2
+
+# 3. Xóa các markers (<<<<<<<, =======, >>>>>>>)
+
+# 4. Stage file đã sửa
+git add file.js
+
+# 5. Hoàn tất merge
+git commit -m "fix: resolve merge conflict in file.js"
+```
+
+**Tips tránh conflict:**
+- Pull main thường xuyên vào feature branch
+- Chia nhỏ task, commit thường xuyên
+- Communicate với team khi sửa cùng file
+
+---
+
+#### 📝 Bài tập thực hành Git
+
+**Bài 1: Workflow cơ bản**
+```bash
+# TODO: Thực hành các bước sau:
+# 1. Clone repo của bạn về máy
+# 2. Tạo branch feature/practice
+# 3. Tạo file mới, commit
+# 4. Push lên remote
+# 5. Quay về main, xóa branch local
+```
+
+**Bài 2: Xử lý conflict**
+```bash
+# TODO: Tạo conflict và xử lý:
+# 1. Tạo 2 branches từ main
+# 2. Ở cả 2 branch, sửa cùng 1 dòng trong cùng 1 file
+# 3. Merge branch 1 vào main
+# 4. Merge branch 2 vào main (sẽ conflict)
+# 5. Xử lý conflict
+```
+
+<details>
+<summary><strong>🔑 Bấm để xem lời giải Bài 1</strong></summary>
+
+```bash
+# 1. Clone repo
+git clone https://github.com/your-username/nova-work-hub.git
+cd nova-work-hub
+
+# 2. Tạo branch
+git checkout -b feature/practice
+
+# 3. Tạo file và commit
+echo "# Practice" > practice.md
+git add practice.md
+git commit -m "docs: add practice file"
+
+# 4. Push lên remote
+git push -u origin feature/practice
+
+# 5. Quay về main và xóa branch
+git checkout main
+git branch -d feature/practice
+git push origin --delete feature/practice  # Xóa remote branch
+```
+
+</details>
+
+<details>
+<summary><strong>🔑 Bấm để xem lời giải Bài 2</strong></summary>
+
+```bash
+# 1. Tạo 2 branches
+git checkout main
+git checkout -b branch-a
+git checkout main
+git checkout -b branch-b
+
+# 2. Sửa file ở branch-a
+git checkout branch-a
+echo "Line from branch A" > test.txt
+git add test.txt
+git commit -m "feat: add from branch A"
+
+# Sửa file ở branch-b
+git checkout branch-b
+echo "Line from branch B" > test.txt
+git add test.txt
+git commit -m "feat: add from branch B"
+
+# 3. Merge branch-a vào main (OK)
+git checkout main
+git merge branch-a
+# Fast-forward, no conflict
+
+# 4. Merge branch-b vào main (CONFLICT!)
+git merge branch-b
+# CONFLICT (add/add): Merge conflict in test.txt
+
+# 5. Xử lý conflict
+# Mở test.txt, sẽ thấy:
+# <<<<<<< HEAD
+# Line from branch A
+# =======
+# Line from branch B
+# >>>>>>> branch-b
+
+# Sửa thành:
+# Line from branch A
+# Line from branch B
+
+git add test.txt
+git commit -m "fix: resolve conflict between branch A and B"
+```
+
+</details>
+
+---
+
+#### ⏱️ Thời gian học: **3-5 ngày**
+
+| Ngày | Nội dung |
+|------|----------|
+| **Ngày 1** | Clone, add, commit, push, pull |
+| **Ngày 2** | Branch, checkout, merge |
+| **Ngày 3** | Xử lý conflict, rebase |
+| **Ngày 4** | Git log, reset, revert |
+| **Ngày 5** | Thực hành workflow với dự án thật |
 
 ---
 
