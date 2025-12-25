@@ -2281,18 +2281,212 @@ async function deletePost(id: string) {
 
 ### 3.2. Server Actions (Next.js 15)
 
-Server Actions thay thế API Routes truyền thống, cho phép gọi hàm server trực tiếp từ client.
+**Server Actions** là tính năng mạnh mẽ trong Next.js 15, cho phép gọi hàm server **trực tiếp từ client** mà không cần tạo API Routes.
 
-#### Cấu trúc thư mục:
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        CÁCH TRUYỀN THỐNG (API Routes)               │
+│                                                                     │
+│   Client Component              API Route              Database     │
+│   ┌─────────────┐    fetch()   ┌─────────────┐        ┌────────┐   │
+│   │   Form      │ ──────────►  │ /api/users  │ ─────► │ Prisma │   │
+│   │   Submit    │              │ POST handler│        │        │   │
+│   └─────────────┘ ◄──────────  └─────────────┘ ◄───── └────────┘   │
+│                     JSON                                            │
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│                        SERVER ACTIONS (Mới)                         │
+│                                                                     │
+│   Client Component                                     Database     │
+│   ┌─────────────┐              ┌─────────────┐        ┌────────┐   │
+│   │   Form      │  direct call │ createUser()│        │ Prisma │   │
+│   │   Submit    │ ───────────► │ "use server"│ ─────► │        │   │
+│   └─────────────┘ ◄─────────── └─────────────┘ ◄───── └────────┘   │
+│                     result                                          │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Tại sao dùng Server Actions?**
+
+| Lợi ích | Mô tả |
+|---------|-------|
+| **Đơn giản hơn** | Không cần tạo API routes, fetch, xử lý response |
+| **Type-safe** | TypeScript types tự động được infer giữa client và server |
+| **Progressive Enhancement** | Form vẫn hoạt động khi JavaScript bị tắt |
+| **Tích hợp với React** | Dùng trực tiếp trong form action, useTransition |
+| **Bảo mật** | Server code không bao giờ được gửi đến client |
+| **Caching** | Tích hợp với Next.js caching (revalidatePath, revalidateTag) |
+
+**Khi nào dùng Server Actions vs API Routes?**
+
+| Tình huống | Dùng |
+|------------|------|
+| Form submission (CRUD) | ✅ Server Actions |
+| Mutations (tạo, sửa, xóa) | ✅ Server Actions |
+| Cần gọi từ mobile app | ❌ API Routes |
+| Webhook từ service bên ngoài | ❌ API Routes |
+| Public API cho third-party | ❌ API Routes |
+
+---
+
+#### 3.2.1. Cấu trúc thư mục
+
 ```
 src/
-├── actions/
-│   ├── user.actions.ts
-│   ├── project.actions.ts
-│   └── task.actions.ts
+├── actions/                      # Thư mục chứa tất cả Server Actions
+│   ├── user.actions.ts           # Actions liên quan đến User
+│   ├── project.actions.ts        # Actions liên quan đến Project
+│   ├── task.actions.ts           # Actions liên quan đến Task
+│   └── auth.actions.ts           # Actions liên quan đến Auth
+├── lib/
+│   ├── prisma.ts                 # Prisma client
+│   └── auth.ts                   # Auth config
+└── app/
+    └── ...
 ```
 
-#### Ví dụ Server Action:
+---
+
+#### 3.2.2. Cú pháp cơ bản
+
+**Cách 1: Trong file riêng (khuyến nghị)**
+
+```typescript
+// src/actions/user.actions.ts
+"use server";  // ← Directive BẮT BUỘC ở đầu file
+
+import { prisma } from "@/lib/prisma";
+import { revalidatePath } from "next/cache";
+
+export async function createUser(data: { name: string; email: string }) {
+  // Code chạy trên server
+  const user = await prisma.user.create({ data });
+  
+  revalidatePath("/users");
+  return user;
+}
+
+export async function deleteUser(id: string) {
+  await prisma.user.delete({ where: { id } });
+  revalidatePath("/users");
+}
+```
+
+**Cách 2: Trong Server Component**
+
+```typescript
+// app/users/page.tsx (Server Component)
+export default async function UsersPage() {
+  
+  // Định nghĩa action trực tiếp trong component
+  async function addUser(formData: FormData) {
+    "use server";  // ← Directive trong function
+    
+    const name = formData.get("name") as string;
+    await prisma.user.create({ data: { name } });
+    revalidatePath("/users");
+  }
+  
+  return (
+    <form action={addUser}>
+      <input name="name" />
+      <button type="submit">Add</button>
+    </form>
+  );
+}
+```
+
+---
+
+#### 3.2.3. Gọi Server Action từ Client
+
+**Cách 1: Trong form action (đơn giản nhất)**
+
+```typescript
+import { createUser } from "@/actions/user.actions";
+
+// Server Action được gọi tự động khi submit form
+<form action={createUser}>
+  <input name="name" />
+  <input name="email" type="email" />
+  <button type="submit">Create User</button>
+</form>
+```
+
+**Cách 2: Với useTransition (hiển thị loading state)**
+
+```typescript
+"use client";
+import { useTransition } from "react";
+import { createUser } from "@/actions/user.actions";
+
+function CreateUserButton() {
+  const [isPending, startTransition] = useTransition();
+  
+  async function handleClick() {
+    startTransition(async () => {
+      const result = await createUser({ 
+        name: "Trung", 
+        email: "trung@email.com" 
+      });
+      
+      if (result.success) {
+        toast.success("Tạo user thành công!");
+      } else {
+        toast.error(result.error);
+      }
+    });
+  }
+  
+  return (
+    <button onClick={handleClick} disabled={isPending}>
+      {isPending ? "Đang tạo..." : "Tạo User"}
+    </button>
+  );
+}
+```
+
+**Cách 3: Với useActionState (React 19 / Next.js 15)**
+
+```typescript
+"use client";
+import { useActionState } from "react";
+import { createUser } from "@/actions/user.actions";
+
+function CreateUserForm() {
+  const [state, formAction, isPending] = useActionState(createUser, null);
+  
+  return (
+    <form action={formAction}>
+      <input name="name" placeholder="Tên" />
+      <input name="email" type="email" placeholder="Email" />
+      
+      {/* Hiển thị lỗi nếu có */}
+      {state?.error && <p className="text-red-500">{state.error}</p>}
+      
+      <button disabled={isPending}>
+        {isPending ? "Đang tạo..." : "Tạo User"}
+      </button>
+    </form>
+  );
+}
+```
+
+---
+
+#### 3.2.4. Pattern chuẩn cho Server Actions
+
+**Return Type thống nhất:**
+
+```typescript
+// Định nghĩa type cho tất cả actions
+type ActionResult<T = void> = 
+  | { success: true; data: T }
+  | { success: false; error: string };
+```
+
+**Cấu trúc Action hoàn chỉnh:**
 
 ```typescript
 // src/actions/user.actions.ts
@@ -2302,8 +2496,11 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import bcrypt from "bcryptjs";
 
-// Schema validation với Zod
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 1. SCHEMA VALIDATION
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 const CreateUserSchema = z.object({
   email: z.string().email("Email không hợp lệ"),
   name: z.string().min(2, "Tên phải có ít nhất 2 ký tự"),
@@ -2313,27 +2510,32 @@ const CreateUserSchema = z.object({
 
 type CreateUserInput = z.infer<typeof CreateUserSchema>;
 
-// Return type cho action
-type ActionResult<T> = 
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 2. RESULT TYPE
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+type ActionResult<T = void> = 
   | { success: true; data: T }
   | { success: false; error: string };
 
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 3. ACTION FUNCTION
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 export async function createUser(
   input: CreateUserInput
 ): Promise<ActionResult<{ id: string }>> {
   try {
-    // 1. Kiểm tra authentication
+    // STEP 1: Authentication - Kiểm tra đăng nhập
     const session = await auth();
     if (!session?.user) {
       return { success: false, error: "Bạn chưa đăng nhập" };
     }
 
-    // 2. Kiểm tra authorization
+    // STEP 2: Authorization - Kiểm tra quyền
     if (session.user.role !== "ADMIN") {
-      return { success: false, error: "Bạn không có quyền tạo user" };
+      return { success: false, error: "Bạn không có quyền thực hiện" };
     }
 
-    // 3. Validate input
+    // STEP 3: Validation - Kiểm tra dữ liệu
     const validatedData = CreateUserSchema.safeParse(input);
     if (!validatedData.success) {
       return { 
@@ -2342,7 +2544,7 @@ export async function createUser(
       };
     }
 
-    // 4. Kiểm tra email đã tồn tại
+    // STEP 4: Business Logic - Kiểm tra email đã tồn tại
     const existingUser = await prisma.user.findUnique({
       where: { email: validatedData.data.email },
     });
@@ -2350,10 +2552,13 @@ export async function createUser(
       return { success: false, error: "Email đã được sử dụng" };
     }
 
-    // 5. Hash password
-    const hashedPassword = await bcrypt.hash(validatedData.data.password, 12);
+    // STEP 5: Hash password
+    const hashedPassword = await bcrypt.hash(
+      validatedData.data.password, 
+      12
+    );
 
-    // 6. Tạo user
+    // STEP 6: Database Operation
     const user = await prisma.user.create({
       data: {
         ...validatedData.data,
@@ -2361,10 +2566,12 @@ export async function createUser(
       },
     });
 
-    // 7. Revalidate cache
+    // STEP 7: Cache Revalidation
     revalidatePath("/admin/users");
 
+    // STEP 8: Return Success
     return { success: true, data: { id: user.id } };
+    
   } catch (error) {
     console.error("Create user error:", error);
     return { success: false, error: "Đã có lỗi xảy ra" };
@@ -2372,47 +2579,406 @@ export async function createUser(
 }
 ```
 
-#### Gọi Server Action từ Client:
+---
+
+#### 3.2.5. Các patterns thường dùng
+
+**Pattern 1: Action với ID (bind)**
 
 ```typescript
-// src/app/admin/users/create/page.tsx
-"use client";
+// Actions cần tham số cố định
+"use server";
 
-import { createUser } from "@/actions/user.actions";
-import { useTransition } from "react";
+export async function deleteUser(userId: string) {
+  await prisma.user.delete({ where: { id: userId } });
+  revalidatePath("/admin/users");
+  return { success: true };
+}
 
-export default function CreateUserPage() {
-  const [isPending, startTransition] = useTransition();
+// Client - bind tham số vào action
+import { deleteUser } from "@/actions/user.actions";
 
-  async function handleSubmit(formData: FormData) {
-    startTransition(async () => {
-      const result = await createUser({
-        email: formData.get("email") as string,
-        name: formData.get("name") as string,
-        password: formData.get("password") as string,
-        role: "MEMBER",
-      });
-
-      if (result.success) {
-        toast.success("Tạo user thành công!");
-      } else {
-        toast.error(result.error);
-      }
-    });
-  }
-
+function DeleteButton({ userId }: { userId: string }) {
+  const deleteUserWithId = deleteUser.bind(null, userId);
+  
   return (
-    <form action={handleSubmit}>
-      {/* Form fields */}
-      <button type="submit" disabled={isPending}>
-        {isPending ? "Đang tạo..." : "Tạo User"}
+    <form action={deleteUserWithId}>
+      <button type="submit" className="text-red-500">
+        Xóa
       </button>
     </form>
   );
 }
 ```
 
-#### Thời gian học: **1 tuần**
+**Pattern 2: Form với FormData**
+
+```typescript
+// Action nhận FormData trực tiếp
+"use server";
+
+export async function createPost(formData: FormData) {
+  const title = formData.get("title") as string;
+  const content = formData.get("content") as string;
+  
+  if (!title || title.length < 3) {
+    return { success: false, error: "Tiêu đề quá ngắn" };
+  }
+  
+  const post = await prisma.post.create({
+    data: { title, content },
+  });
+  
+  revalidatePath("/posts");
+  return { success: true, data: { id: post.id } };
+}
+
+// Client
+<form action={createPost}>
+  <input name="title" placeholder="Tiêu đề" required />
+  <textarea name="content" placeholder="Nội dung" />
+  <button type="submit">Tạo bài viết</button>
+</form>
+```
+
+**Pattern 3: Redirect sau action**
+
+```typescript
+"use server";
+import { redirect } from "next/navigation";
+
+export async function createProject(data: ProjectInput) {
+  const project = await prisma.project.create({ data });
+  
+  revalidatePath("/projects");
+  
+  // Redirect đến trang chi tiết
+  redirect(`/projects/${project.id}`);
+  // ⚠️ Không return gì sau redirect
+}
+```
+
+---
+
+#### 3.2.6. Cache Revalidation
+
+**revalidatePath - Revalidate theo path:**
+
+```typescript
+"use server";
+import { revalidatePath } from "next/cache";
+
+export async function createUser(data: UserInput) {
+  await prisma.user.create({ data });
+  
+  // Revalidate 1 path cụ thể
+  revalidatePath("/users");
+  
+  // Revalidate với layout
+  revalidatePath("/users", "layout");
+  
+  // Revalidate dynamic route
+  revalidatePath("/users/[id]", "page");
+}
+```
+
+**revalidateTag - Revalidate theo tag:**
+
+```typescript
+"use server";
+import { revalidateTag } from "next/cache";
+
+export async function createUser(data: UserInput) {
+  await prisma.user.create({ data });
+  
+  // Revalidate tất cả data có tag "users"
+  revalidateTag("users");
+}
+```
+
+---
+
+#### 3.2.7. Error Handling
+
+```typescript
+"use server";
+import { Prisma } from "@prisma/client";
+
+export async function createUser(
+  input: CreateUserInput
+): Promise<ActionResult<{ id: string }>> {
+  try {
+    // Validate
+    const validatedData = CreateUserSchema.safeParse(input);
+    if (!validatedData.success) {
+      return { 
+        success: false, 
+        error: validatedData.error.errors[0].message,
+      };
+    }
+    
+    // Create
+    const user = await prisma.user.create({ 
+      data: validatedData.data 
+    });
+    
+    return { success: true, data: { id: user.id } };
+    
+  } catch (error) {
+    // Xử lý lỗi Prisma cụ thể
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === "P2002") {
+        return { success: false, error: "Email đã tồn tại" };
+      }
+      if (error.code === "P2025") {
+        return { success: false, error: "Không tìm thấy record" };
+      }
+    }
+    
+    // Log lỗi không mong muốn
+    console.error("Unexpected error:", error);
+    
+    // Return lỗi chung (không expose chi tiết cho client)
+    return { success: false, error: "Đã có lỗi xảy ra" };
+  }
+}
+```
+
+---
+
+#### 📝 Bài tập thực hành Server Actions
+
+**Bài 1: Tạo CRUD Actions cho Task**
+```typescript
+// TODO: Tạo các actions sau:
+// - createTask(title, description, projectId)
+// - updateTask(id, data)
+// - deleteTask(id)
+// - toggleTaskStatus(id)
+```
+
+**Bài 2: Tạo Form với validation**
+```typescript
+// TODO: Tạo form tạo Project với:
+// - Validation: title min 3 ký tự
+// - Hiển thị loading state
+// - Hiển thị error message
+// - Redirect về /projects sau khi tạo thành công
+```
+
+<details>
+<summary><strong>🔑 Bấm để xem lời giải Bài 1</strong></summary>
+
+```typescript
+// src/actions/task.actions.ts
+"use server";
+
+import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
+
+type ActionResult<T = void> = 
+  | { success: true; data: T }
+  | { success: false; error: string };
+
+// CREATE
+const CreateTaskSchema = z.object({
+  title: z.string().min(1, "Tiêu đề không được để trống"),
+  description: z.string().optional(),
+  projectId: z.string().cuid(),
+});
+
+export async function createTask(
+  input: z.infer<typeof CreateTaskSchema>
+): Promise<ActionResult<{ id: string }>> {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return { success: false, error: "Chưa đăng nhập" };
+    }
+
+    const validatedData = CreateTaskSchema.safeParse(input);
+    if (!validatedData.success) {
+      return { success: false, error: validatedData.error.errors[0].message };
+    }
+
+    const task = await prisma.task.create({
+      data: {
+        ...validatedData.data,
+        status: "TODO",
+        assigneeId: session.user.id,
+      },
+    });
+
+    revalidatePath(`/projects/${input.projectId}`);
+    return { success: true, data: { id: task.id } };
+  } catch (error) {
+    return { success: false, error: "Đã có lỗi xảy ra" };
+  }
+}
+
+// UPDATE
+export async function updateTask(
+  id: string,
+  data: { title?: string; description?: string; status?: string }
+): Promise<ActionResult> {
+  try {
+    const task = await prisma.task.update({
+      where: { id },
+      data,
+    });
+    
+    revalidatePath(`/projects/${task.projectId}`);
+    return { success: true, data: undefined };
+  } catch (error) {
+    return { success: false, error: "Đã có lỗi xảy ra" };
+  }
+}
+
+// DELETE
+export async function deleteTask(id: string): Promise<ActionResult> {
+  try {
+    const task = await prisma.task.delete({ where: { id } });
+    
+    revalidatePath(`/projects/${task.projectId}`);
+    return { success: true, data: undefined };
+  } catch (error) {
+    return { success: false, error: "Đã có lỗi xảy ra" };
+  }
+}
+
+// TOGGLE STATUS
+export async function toggleTaskStatus(id: string): Promise<ActionResult> {
+  try {
+    const task = await prisma.task.findUnique({ where: { id } });
+    if (!task) {
+      return { success: false, error: "Task không tồn tại" };
+    }
+
+    const newStatus = task.status === "DONE" ? "TODO" : "DONE";
+    
+    await prisma.task.update({
+      where: { id },
+      data: { status: newStatus },
+    });
+
+    revalidatePath(`/projects/${task.projectId}`);
+    return { success: true, data: undefined };
+  } catch (error) {
+    return { success: false, error: "Đã có lỗi xảy ra" };
+  }
+}
+```
+
+</details>
+
+<details>
+<summary><strong>🔑 Bấm để xem lời giải Bài 2</strong></summary>
+
+```typescript
+// src/actions/project.actions.ts
+"use server";
+
+import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { z } from "zod";
+
+const CreateProjectSchema = z.object({
+  title: z.string().min(3, "Tiêu đề phải có ít nhất 3 ký tự"),
+  description: z.string().optional(),
+});
+
+type ActionResult = 
+  | { success: true; data: { id: string } }
+  | { success: false; error: string };
+
+export async function createProject(
+  formData: FormData
+): Promise<ActionResult> {
+  const session = await auth();
+  if (!session?.user) {
+    return { success: false, error: "Chưa đăng nhập" };
+  }
+
+  const input = {
+    title: formData.get("title") as string,
+    description: formData.get("description") as string,
+  };
+
+  const validatedData = CreateProjectSchema.safeParse(input);
+  if (!validatedData.success) {
+    return { 
+      success: false, 
+      error: validatedData.error.errors[0].message 
+    };
+  }
+
+  const project = await prisma.project.create({
+    data: validatedData.data,
+  });
+
+  revalidatePath("/projects");
+  redirect(`/projects/${project.id}`);
+}
+```
+
+```typescript
+// app/projects/new/page.tsx
+"use client";
+
+import { useActionState } from "react";
+import { createProject } from "@/actions/project.actions";
+
+export default function NewProjectPage() {
+  const [state, formAction, isPending] = useActionState(createProject, null);
+
+  return (
+    <div className="max-w-md mx-auto p-6">
+      <h1 className="text-2xl font-bold mb-4">Tạo Project mới</h1>
+      
+      <form action={formAction} className="space-y-4">
+        <div>
+          <label className="block mb-1">Tiêu đề</label>
+          <input 
+            name="title" 
+            className="w-full border p-2 rounded"
+            placeholder="Nhập tiêu đề project"
+            required
+          />
+        </div>
+        
+        <div>
+          <label className="block mb-1">Mô tả</label>
+          <textarea 
+            name="description"
+            className="w-full border p-2 rounded"
+            placeholder="Nhập mô tả (không bắt buộc)"
+          />
+        </div>
+        
+        {state?.error && (
+          <div className="bg-red-100 text-red-700 p-2 rounded">
+            {state.error}
+          </div>
+        )}
+        
+        <button 
+          type="submit" 
+          disabled={isPending}
+          className="w-full bg-blue-500 text-white p-2 rounded disabled:opacity-50"
+        >
+          {isPending ? "Đang tạo..." : "Tạo Project"}
+        </button>
+      </form>
+    </div>
+  );
+}
+```
+
+</details>
 
 ---
 
