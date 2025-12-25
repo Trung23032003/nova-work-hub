@@ -4174,38 +4174,7 @@ function AdminPanel() {
 
 ---
 
-## 4. Lộ trình học tập 3 tháng
-
-### 📅 Tháng 1: Xây dựng nền tảng
-
-| Tuần | Nội dung | Output |
-|------|----------|--------|
-| **Tuần 1** | TypeScript cơ bản đến nâng cao | Hoàn thành các bài tập TypeScript trên TypeScript Playground |
-| **Tuần 2** | SQL & PostgreSQL | Viết được các câu query CRUD, JOIN |
-| **Tuần 3** | Prisma Schema & Migrations | Tự thiết kế schema cho một app đơn giản |
-| **Tuần 4** | Prisma Client CRUD | Viết được tất cả các loại query với Prisma |
-
-### 📅 Tháng 2: Xây dựng ứng dụng
-
-| Tuần | Nội dung | Output |
-|------|----------|--------|
-| **Tuần 5** | Next.js App Router basics | Hiểu cấu trúc folder, Server vs Client Components |
-| **Tuần 6** | Server Actions + Zod | Viết được các action CRUD với validation |
-| **Tuần 7** | Auth.js + Middleware | Implement authentication flow hoàn chỉnh |
-| **Tuần 8** | Mini Project #1 | Xây dựng app Todo với Auth + CRUD |
-
-### 📅 Tháng 3: Nâng cao & Thực chiến
-
-| Tuần | Nội dung | Output |
-|------|----------|--------|
-| **Tuần 9** | Error Handling & Logging | Implement error boundary, logging system |
-| **Tuần 10** | Testing với Vitest | Viết unit test cho Server Actions |
-| **Tuần 11** | Performance & Caching | Hiểu về revalidation, ISR, caching strategies |
-| **Tuần 12** | Mini Project #2 | Xây dựng app quản lý task với nhiều user |
-
----
-
-## 5. Tài nguyên học tập
+## 4. Tài nguyên học tập
 
 ### 📚 Tài liệu chính thức (Miễn phí)
 | Công nghệ | Link | Ghi chú |
@@ -4222,50 +4191,6 @@ function AdminPanel() {
 | **The Net Ninja - Next.js 14** | YouTube | Miễn phí, cơ bản |
 | **Prisma Course** | YouTube (Web Dev Simplified) | Prisma từ A-Z |
 | **TypeScript Full Course** | YouTube (Dave Gray) | TypeScript chi tiết |
-
-### 🛠️ Tools cần cài đặt
-```bash
-# IDE
-VS Code (bắt buộc)
-
-# Extensions VS Code quan trọng
-- Prisma
-- ESLint
-- Prettier
-- TypeScript Importer
-- GitLens
-
-# Database GUI
-- DBeaver hoặc TablePlus
-- Prisma Studio (npx prisma studio)
-
-# API Testing
-- Postman hoặc Thunder Client (VS Code extension)
-```
-
----
-
-## 6. Checklist đánh giá năng lực
-
-### Level 1: Beginner (Sau 1 tháng)
-- [ ] Viết được TypeScript với Interface, Types, Generics
-- [ ] Viết được SQL query cơ bản (SELECT, INSERT, UPDATE, DELETE, JOIN)
-- [ ] Tạo được Prisma schema và chạy migration
-- [ ] Thực hiện được CRUD với Prisma Client
-
-### Level 2: Intermediate (Sau 2 tháng)
-- [ ] Phân biệt được Server Components vs Client Components
-- [ ] Viết được Server Actions với Zod validation
-- [ ] Implement được authentication với Auth.js
-- [ ] Bảo vệ routes với middleware
-- [ ] Xử lý được errors và edge cases
-
-### Level 3: Advanced (Sau 3 tháng)
-- [ ] Tối ưu được query với Prisma (select, include, pagination)
-- [ ] Implement được RBAC (Role-Based Access Control)
-- [ ] Viết được unit tests với Vitest
-- [ ] Hiểu và áp dụng được caching strategies
-- [ ] Debug và fix được production issues
 
 ---
 
@@ -4285,19 +4210,3 @@ VS Code (bắt buộc)
 
 ### 5. Commit thường xuyên
 > Mỗi tính năng nhỏ hoàn thành, hãy commit. Điều này giúp bạn track được tiến độ và rollback khi cần.
-
----
-
-## 📞 Hỗ trợ
-
-Khi gặp khó khăn, hãy:
-1. Đọc lại docs chính thức
-2. Search trên StackOverflow / GitHub Issues
-3. Hỏi trong team chat
-4. Đọc file `Readme/07_implementation-plan-novawork-hub.md` để hiểu context dự án
-
----
-
-> **Lưu ý cuối**: Đây là lộ trình gợi ý. Tùy vào nền tảng và tốc độ học của bạn, thời gian có thể ngắn hơn hoặc dài hơn. Điều quan trọng là **hiểu sâu** chứ không phải học nhanh.
-
-*Cập nhật lần cuối: 24/12/2024*
