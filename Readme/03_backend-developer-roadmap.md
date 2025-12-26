@@ -1710,6 +1710,122 @@ enum ProjectStatus {
 }
 ```
 
+**Enum là gì?**
+
+**Enum** (viết tắt của **Enumeration**) là một kiểu dữ liệu đặc biệt cho phép bạn định nghĩa một tập hợp các hằng số có tên. Thay vì sử dụng các giá trị số hoặc chuỗi "magic" rải rác trong code, Enum giúp bạn nhóm các giá trị liên quan lại với nhau một cách có tổ chức.
+
+**Lợi ích của Enum:**
+
+| Lợi ích | Giải thích |
+|---------|------------|
+| **Type Safety** | Compiler sẽ báo lỗi nếu bạn dùng giá trị không hợp lệ |
+| **Tự động hoàn thành** | IDE sẽ gợi ý các giá trị hợp lệ khi viết code |
+| **Dễ bảo trì** | Thay đổi giá trị ở một nơi, áp dụng toàn bộ project |
+| **Code dễ đọc** | `OrderStatus.DELIVERED` rõ ràng hơn `"delivered"` |
+| **Tránh lỗi typo** | Không thể viết sai tên giá trị vì IDE kiểm tra |
+
+**Sử dụng Enum trong TypeScript:**
+
+```typescript
+// Định nghĩa Enum cho trạng thái đơn hàng
+enum OrderStatus {
+  PENDING = "PENDING",
+  PROCESSING = "PROCESSING",
+  SHIPPED = "SHIPPED",
+  DELIVERED = "DELIVERED",
+  CANCELLED = "CANCELLED"
+}
+
+// Sử dụng Enum trong object
+const myOrder = {
+  id: 1,
+  status: OrderStatus.PENDING
+};
+
+// So sánh với Enum
+if (myOrder.status === OrderStatus.PENDING) {
+  console.log("Đơn hàng đang chờ xử lý");
+}
+
+// Sử dụng trong function parameter
+function updateStatus(orderId: number, status: OrderStatus) {
+  // status chỉ có thể là 1 trong các giá trị của OrderStatus
+}
+
+// ✅ Đúng
+updateStatus(1, OrderStatus.SHIPPED);
+
+// ❌ Lỗi compile - "invalid" không phải giá trị hợp lệ
+// updateStatus(1, "invalid");
+```
+
+**Sử dụng Enum trong Prisma Schema:**
+
+```prisma
+// Định nghĩa Enum trong schema
+enum Role {
+  USER
+  ADMIN
+  MODERATOR
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  REVIEW
+  DONE
+}
+
+// Sử dụng Enum trong Model
+model User {
+  id    Int    @id @default(autoincrement())
+  name  String
+  role  Role   @default(USER)  // Giá trị mặc định là USER
+}
+
+model Task {
+  id     Int        @id @default(autoincrement())
+  title  String
+  status TaskStatus @default(TODO)
+}
+```
+
+**Sử dụng Enum với Prisma Client:**
+
+```typescript
+import { Role, TaskStatus } from "@prisma/client";
+
+// Tạo user với role cụ thể
+const admin = await prisma.user.create({
+  data: {
+    name: "Admin User",
+    role: Role.ADMIN  // 👈 Sử dụng Enum từ Prisma
+  }
+});
+
+// Lọc theo Enum
+const admins = await prisma.user.findMany({
+  where: {
+    role: Role.ADMIN
+  }
+});
+
+// Lọc nhiều giá trị Enum
+const activeUsers = await prisma.user.findMany({
+  where: {
+    role: { in: [Role.ADMIN, Role.MODERATOR] }
+  }
+});
+
+// Cập nhật status task
+const task = await prisma.task.update({
+  where: { id: 1 },
+  data: {
+    status: TaskStatus.IN_PROGRESS
+  }
+});
+```
+
 **Các Attributes quan trọng:**
 
 | Attribute | Ý nghĩa | Ví dụ |
@@ -1738,63 +1854,317 @@ enum ProjectStatus {
 
 #### 3.1.2. Relations - Quan hệ giữa các Models
 
-**One-to-One (1-1):**
+Prisma hỗ trợ 3 loại quan hệ chính giữa các bảng. Hiểu rõ Relations là **cực kỳ quan trọng** khi làm việc với database.
+
+**Giải thích cú pháp `@relation`:**
+
+```prisma
+user   User   @relation(fields: [userId], references: [id])
+```
+
+Đây là cú pháp định nghĩa **quan hệ (relationship)** giữa các bảng. Phân tích từng phần:
+
+```
+user       User       @relation(fields: [userId], references: [id])
+ │          │                      │                    │
+ │          │                      │                    └── Cột được tham chiếu ở bảng User (Primary Key)
+ │          │                      └── Cột khóa ngoại ở bảng hiện tại (Foreign Key)
+ │          └── Kiểu dữ liệu (Model được liên kết)
+ └── Tên trường quan hệ (dùng để truy cập trong code)
+```
+
+| Thành phần | Ý nghĩa | Ví dụ |
+|------------|---------|-------|
+| `user` | Tên trường để truy cập object liên quan | `post.user` |
+| `User` | Model/Bảng được liên kết đến | Model User |
+| `fields: [userId]` | Cột **khóa ngoại** trong bảng **hiện tại** | Cột userId của Post |
+| `references: [id]` | Cột **khóa chính** trong bảng **được tham chiếu** | Cột id của User |
+
+---
+
+##### 🔗 One-to-One (1-1) - Quan hệ Một-Một
+
+Mỗi bản ghi ở bảng A chỉ liên kết với **đúng một** bản ghi ở bảng B và ngược lại.
+
 ```prisma
 model User {
   id      String   @id @default(cuid())
-  profile Profile?                        // Optional 1-1
+  email   String   @unique
+  name    String
+  profile Profile?                        // 👈 Dấu ? nghĩa là optional (có thể null)
 }
 
 model Profile {
   id     String @id @default(cuid())
-  bio    String
-  userId String @unique                   // FK + UNIQUE = 1-1
+  bio    String?
+  avatar String?
+  userId String @unique                   // 👈 @unique đảm bảo quan hệ 1-1
   user   User   @relation(fields: [userId], references: [id])
 }
 ```
 
-**One-to-Many (1-n):**
+**Sơ đồ quan hệ:**
+```
+┌─────────────┐           ┌─────────────┐
+│    User     │    1:1    │   Profile   │
+├─────────────┤           ├─────────────┤
+│ id (PK)  ◄──┼───────────┼── userId (FK, UNIQUE)
+│ email       │           │ bio         │
+│ profile ────┼───────────┼─► user      │
+└─────────────┘           └─────────────┘
+```
+
+**Sử dụng trong code:**
+```typescript
+// Tạo User kèm Profile (Nested create)
+const user = await prisma.user.create({
+  data: {
+    email: "trung@example.com",
+    name: "Trung Đặng",
+    profile: {
+      create: {  // 👈 Tạo Profile cùng lúc với User
+        bio: "Backend Developer",
+        avatar: "avatar.jpg"
+      }
+    }
+  },
+  include: { profile: true }  // 👈 Trả về kèm Profile
+});
+
+// Lấy User kèm Profile
+const userWithProfile = await prisma.user.findUnique({
+  where: { id: "user-123" },
+  include: { profile: true }
+});
+// Kết quả:
+// {
+//   id: "user-123",
+//   email: "trung@example.com",
+//   name: "Trung Đặng",
+//   profile: {
+//     id: "profile-456",
+//     bio: "Backend Developer",
+//     avatar: "avatar.jpg",
+//     userId: "user-123"
+//   }
+// }
+```
+
+---
+
+##### 🔗 One-to-Many (1-N) - Quan hệ Một-Nhiều
+
+Một bản ghi ở bảng A có thể liên kết với **nhiều** bản ghi ở bảng B. Đây là loại quan hệ **phổ biến nhất**.
+
 ```prisma
 model Project {
   id    String @id @default(cuid())
   title String
-  tasks Task[]                            // Một project có nhiều tasks
+  tasks Task[]                            // 👈 Mảng Task (một Project có nhiều Tasks)
 }
 
 model Task {
   id        String  @id @default(cuid())
   title     String
-  projectId String                        // Foreign Key
+  projectId String                        // 👈 Foreign Key (KHÔNG có @unique)
   project   Project @relation(fields: [projectId], references: [id])
 }
 ```
 
-**Many-to-Many (n-n) - Explicit (Khuyến nghị):**
+**Sơ đồ quan hệ:**
+```
+┌─────────────┐           ┌─────────────┐
+│   Project   │    1:N    │    Task     │
+├─────────────┤           ├─────────────┤
+│ id (PK)  ◄──┼───────────┼── projectId (FK)
+│ title       │     │     │ title       │
+│ tasks[] ────┼─────┼─────┼─► project   │
+└─────────────┘     │     └─────────────┘
+                    │
+              Một Project có
+              nhiều Tasks
+```
+
+**Sử dụng trong code:**
+```typescript
+// Tạo Project với nhiều Tasks
+const project = await prisma.project.create({
+  data: {
+    title: "NovaWork Hub",
+    tasks: {
+      create: [  // 👈 Tạo nhiều Tasks cùng lúc
+        { title: "Setup database" },
+        { title: "Create API endpoints" },
+        { title: "Write documentation" }
+      ]
+    }
+  },
+  include: { tasks: true }
+});
+
+// Lấy Project với tất cả Tasks
+const projectWithTasks = await prisma.project.findUnique({
+  where: { id: "project-123" },
+  include: {
+    tasks: {
+      orderBy: { createdAt: "desc" },  // Sắp xếp tasks
+      where: { status: "TODO" }         // Lọc tasks
+    }
+  }
+});
+
+// Đếm số Tasks của một Project
+const taskCount = await prisma.task.count({
+  where: { projectId: "project-123" }
+});
+
+// Thêm Task mới vào Project đã tồn tại
+const newTask = await prisma.task.create({
+  data: {
+    title: "New feature",
+    project: {
+      connect: { id: "project-123" }  // 👈 Liên kết với Project có sẵn
+    }
+  }
+});
+```
+
+---
+
+##### 🔗 Many-to-Many (N-N) - Quan hệ Nhiều-Nhiều
+
+Một bản ghi ở bảng A có thể liên kết với **nhiều** bản ghi ở bảng B, và ngược lại.
+
+**Cách 1: Implicit (Prisma tự tạo bảng trung gian)**
+```prisma
+model Post {
+  id         Int        @id @default(autoincrement())
+  title      String
+  categories Category[] // 👈 Mảng Category
+}
+
+model Category {
+  id    Int    @id @default(autoincrement())
+  name  String
+  posts Post[] // 👈 Mảng Post
+}
+```
+> ⚠️ Prisma tự động tạo bảng `_CategoryToPost` trong database. Không thể thêm field bổ sung.
+
+**Cách 2: Explicit (Khuyến nghị - Tự định nghĩa bảng trung gian)**
 ```prisma
 model User {
   id       String          @id @default(cuid())
-  projects ProjectMember[]
+  name     String
+  projects ProjectMember[] // 👈 Qua bảng trung gian
 }
 
 model Project {
   id      String          @id @default(cuid())
-  members ProjectMember[]
+  title   String
+  members ProjectMember[] // 👈 Qua bảng trung gian
 }
 
-// Bảng trung gian - có thể thêm thông tin về relation
+// 👇 Bảng trung gian (Junction Table) - CÓ THỂ THÊM THÔNG TIN BỔ SUNG
 model ProjectMember {
   id        String   @id @default(cuid())
   userId    String
   projectId String
-  role      String                         // Thêm thông tin về relation
-  joinedAt  DateTime @default(now())
+  role      String                         // 👈 Thêm thông tin về relation
+  joinedAt  DateTime @default(now())       // 👈 Thêm timestamp
   
   user    User    @relation(fields: [userId], references: [id])
   project Project @relation(fields: [projectId], references: [id])
   
-  @@unique([userId, projectId])            // 1 user chỉ join 1 project 1 lần
+  @@unique([userId, projectId])            // 👈 1 user chỉ join 1 project 1 lần
 }
 ```
+
+**Sơ đồ quan hệ:**
+```
+┌─────────────┐       ┌─────────────────┐       ┌─────────────┐
+│    User     │       │ ProjectMember   │       │   Project   │
+├─────────────┤       ├─────────────────┤       ├─────────────┤
+│ id (PK)  ◄──┼───────┼── userId (FK)   │       │ id (PK)  ◄──┤
+│ name        │       │ projectId (FK) ─┼───────┼──           │
+│ projects ───┼───────┼─► user          │       │ title       │
+└─────────────┘  N:N  │ project ────────┼───────┼─► members   │
+                      │ role            │       └─────────────┘
+                      │ joinedAt        │
+                      └─────────────────┘
+```
+
+**Sử dụng trong code:**
+```typescript
+// Tạo Project và thêm members
+const project = await prisma.project.create({
+  data: {
+    title: "New Project",
+    members: {
+      create: [
+        { userId: "user-1", role: "OWNER" },
+        { userId: "user-2", role: "MEMBER" },
+      ]
+    }
+  },
+  include: {
+    members: {
+      include: { user: true }  // 👈 Include thông tin User
+    }
+  }
+});
+
+// Thêm user vào project đã tồn tại
+const membership = await prisma.projectMember.create({
+  data: {
+    userId: "user-3",
+    projectId: "project-123",
+    role: "MEMBER"
+  }
+});
+
+// Lấy tất cả projects của một user
+const userProjects = await prisma.user.findUnique({
+  where: { id: "user-1" },
+  include: {
+    projects: {
+      include: {
+        project: true  // 👈 Include thông tin Project
+      }
+    }
+  }
+});
+
+// Xóa user khỏi project
+await prisma.projectMember.delete({
+  where: {
+    userId_projectId: {  // 👈 Sử dụng composite unique
+      userId: "user-3",
+      projectId: "project-123"
+    }
+  }
+});
+```
+
+---
+
+##### 📊 Bảng so sánh các loại quan hệ
+
+| Loại quan hệ | Ký hiệu | Ví dụ thực tế | Đặc điểm chính |
+|--------------|---------|---------------|----------------|
+| **One-to-One** | 1:1 | User ↔ Profile | FK có `@unique` |
+| **One-to-Many** | 1:N | Project → Tasks[] | FK không có `@unique` |
+| **Many-to-Many** | N:N | User ↔ Project | Cần bảng trung gian |
+
+##### 🔧 Các thao tác quan hệ phổ biến
+
+| Thao tác | Mô tả | Ví dụ |
+|----------|-------|-------|
+| `create` | Tạo mới bản ghi liên quan | `tasks: { create: {...} }` |
+| `connect` | Liên kết với bản ghi đã tồn tại | `user: { connect: { id: 1 } }` |
+| `disconnect` | Ngắt liên kết | `categories: { disconnect: { id: 1 } }` |
+| `set` | Thay thế toàn bộ quan hệ | `categories: { set: [{ id: 1 }] }` |
+| `connectOrCreate` | Kết nối hoặc tạo mới | `user: { connectOrCreate: {...} }` |
 
 ---
 
