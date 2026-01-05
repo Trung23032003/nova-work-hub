@@ -265,7 +265,7 @@ function LoginForm() {
                     <Button
                         type="button"
                         variant="outline"
-                        className="w-full bg-white border-slate-300 text-slate-700 font-medium hover:bg-slate-50 hover:border-slate-400 transition-all duration-200 hover:shadow-md"
+                        className="w-full bg-white border-slate-300 text-slate-700 font-medium hover:bg-slate-50 hover:text-slate-700 hover:border-slate-400 transition-all duration-200 hover:shadow-md"
                         style={{ fontFamily: 'Roboto, sans-serif' }}
                         onClick={handleGoogleLogin}
                         disabled={isLoading}
